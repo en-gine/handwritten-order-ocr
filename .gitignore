@@ -39,6 +39,7 @@ uploads/*
 
 # Prisma
 prisma/*.db
+prisma/prisma/*.db
 prisma/*.db-journal
 
 # Temporary files
