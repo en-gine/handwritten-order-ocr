@@ -56,7 +56,7 @@ specs/[###-feature]/
 -->
 
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+# 1: Single project (DEFAULT)
 src/
 ├── models/
 ├── services/
@@ -67,29 +67,6 @@ tests/
 ├── contract/
 ├── integration/
 └── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
-```
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
