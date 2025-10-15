@@ -64,7 +64,7 @@
 
 ### Authentication & Multi-Tenancy
 
-- [ ] T027 Implement JWT authentication middleware in src/api/middleware/auth.ts (RS256 verification, extract tenant_id claim)
+- [X] T027 Implement JWT authentication middleware in src/api/middleware/auth.ts (RS256 verification, extract tenant_id claim)
 - [ ] T028 Implement tenant database routing middleware in src/api/middleware/tenant.ts (fetch tenant metadata from service DB, inject Prisma client into context)
 - [ ] T029 [P] Implement rate limiting middleware in src/api/middleware/rateLimit.ts (per-tenant limits based on rate_limit_tier claim)
 - [ ] T030 [P] Create JWT token generation utility in src/lib/jwt.ts (RS256 signing with tenant_id, permissions, rate_limit_tier claims)
