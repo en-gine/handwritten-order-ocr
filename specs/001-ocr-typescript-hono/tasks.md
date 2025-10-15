@@ -43,7 +43,7 @@
 - [ ] T009 Generate initial Prisma migration for base schema
 - [ ] T010 Create Turso parent seed database via CLI: `turso db create ocr-seed-db --group default`
 - [ ] T011 Apply initial Prisma migration to seed database
-- [ ] T012 Create service database for tenant metadata: `turso db create ocr-service-db`
+- [X] T012 Create service database for tenant metadata: `turso db create ocr-service-db`
 - [ ] T013 Apply Tenant model migration to service database
 - [ ] T014 Create test tenant database: `turso db create ocr-tenant-test --group default --seed type=database,name=ocr-seed-db`
 - [ ] T015 Add raw SQL migration for F32_BLOB vector columns (products.embedding, customer_context.embedding, order_history.embedding) in migrations/002_add_vector_embeddings.sql

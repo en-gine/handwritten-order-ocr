@@ -1,0 +1,31 @@
+// prisma/service-schema.prisma
+// Service Database Schema - Stores tenant metadata only
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/service-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SERVICE_DATABASE_URL")
+}
+
+/// Tenant represents an isolated organization using the OCR API
+/// Each tenant has a dedicated Turso child database
+model Tenant {
+  id                  String   @id @default(uuid())
+  name                String
+  databaseName        String   @unique // Turso child database name (e.g., "ocr-tenant-abc123")
+  databaseUrl         String   // libsql://tenant-abc123.turso.io
+  databaseHostname    String   // tenant-abc123.turso.io
+  apiKey              String?  @unique // Optional: for API key auth (if not using JWT)
+  confidenceThreshold Float    @default(0.70) // Default 70% confidence threshold
+  aiModel             String   @default("gemini-2.0-flash-exp") // Configurable AI model
+  rateLimitTier       String   @default("standard") // standard, premium, enterprise
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("tenants")
+}
