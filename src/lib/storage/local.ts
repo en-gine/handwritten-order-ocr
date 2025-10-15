@@ -1,7 +1,7 @@
 // src/lib/storage/local.ts
 import fs from 'fs/promises'
 import path from 'path'
-import type { FileStorage } from './interface'
+import type { FileStorage } from './interface.js'
 
 /**
  * Local file storage implementation for development environment.
@@ -77,7 +77,6 @@ export class LocalFileStorage implements FileStorage {
    *
    * @param tenantId - Unique tenant identifier
    * @param fileKey - Order ID to find file
-   * @param expiresIn - Ignored for local storage (parameter for interface compatibility)
    * @returns Absolute file path
    *
    * @throws Error if file not found
@@ -90,8 +89,7 @@ export class LocalFileStorage implements FileStorage {
    */
   async generatePresignedUrl(
     tenantId: string,
-    fileKey: string,
-    expiresIn?: number
+    fileKey: string
   ): Promise<string> {
     // For local storage, fileKey is the orderId
     // Find the file and return its absolute path

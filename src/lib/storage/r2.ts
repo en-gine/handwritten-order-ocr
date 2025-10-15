@@ -7,7 +7,7 @@ import {
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import type { FileStorage } from './interface'
+import type { FileStorage } from './interface.js'
 
 /**
  * Cloudflare R2 file storage implementation for production environment.

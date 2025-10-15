@@ -88,7 +88,7 @@ export type OrderHistoryWithEmbedding = OrderHistory & {
  * Re-export vector utility functions for convenience.
  * These functions handle conversion between Float32Array and Buffer (F32_BLOB).
  */
-export { vectorToBlob, blobToVector } from '../lib/vectors'
+export { vectorToBlob, blobToVector } from '../lib/vectors.js'
 
 /**
  * Type guard to check if a product has an embedding.

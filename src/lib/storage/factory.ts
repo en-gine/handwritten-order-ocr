@@ -1,7 +1,7 @@
 // src/lib/storage/factory.ts
-import type { FileStorage } from './interface'
-import { LocalFileStorage } from './local'
-import { R2FileStorage } from './r2'
+import type { FileStorage } from './interface.js'
+import { LocalFileStorage } from './local.js'
+import { R2FileStorage } from './r2.js'
 
 /**
  * Create a storage instance based on the current environment.
