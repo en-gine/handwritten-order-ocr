@@ -1,6 +1,7 @@
 // src/lib/storage/local.ts
 import fs from 'fs/promises'
 import path from 'path'
+import type { FileStorage } from './interface'
 
 /**
  * Local file storage implementation for development environment.
@@ -17,7 +18,7 @@ import path from 'path'
  * - File cleanup by age
  * - Support for multiple image formats
  */
-export class LocalFileStorage {
+export class LocalFileStorage implements FileStorage {
   private baseDir: string
 
   /**
@@ -36,7 +37,96 @@ export class LocalFileStorage {
   }
 
   /**
-   * Save an uploaded file to tenant-specific directory.
+   * Upload a file to local storage (implements FileStorage interface).
+   *
+   * @param tenantId - Unique tenant identifier
+   * @param orderId - Order ID for filename
+   * @param file - File object from HTTP upload
+   * @param contentType - MIME type (e.g., 'application/pdf', 'image/jpeg')
+   * @returns Absolute file path where file was saved
+   *
+   * @throws Error if file write fails
+   *
+   * @example
+   * ```typescript
+   * const filePath = await storage.uploadFile(
+   *   'tenant-123',
+   *   'order-456',
+   *   uploadedFile,
+   *   'application/pdf'
+   * )
+   * // Returns: '/absolute/path/to/uploads/tenant-123/order-456.pdf'
+   * ```
+   */
+  async uploadFile(
+    tenantId: string,
+    orderId: string,
+    file: File,
+    contentType: string
+  ): Promise<string> {
+    const extension = this.getExtension(contentType)
+    return this.saveFile(tenantId, orderId, file, extension)
+  }
+
+  /**
+   * Generate a presigned URL (for local storage, returns absolute file path).
+   *
+   * Note: Local storage doesn't support true presigned URLs since files
+   * are accessed via filesystem. This method returns the file path for
+   * development/testing purposes.
+   *
+   * @param tenantId - Unique tenant identifier
+   * @param fileKey - Order ID to find file
+   * @param expiresIn - Ignored for local storage (parameter for interface compatibility)
+   * @returns Absolute file path
+   *
+   * @throws Error if file not found
+   *
+   * @example
+   * ```typescript
+   * const url = await storage.generatePresignedUrl('tenant-123', 'order-456')
+   * // Returns: '/absolute/path/to/uploads/tenant-123/order-456.pdf'
+   * ```
+   */
+  async generatePresignedUrl(
+    tenantId: string,
+    fileKey: string,
+    expiresIn?: number
+  ): Promise<string> {
+    // For local storage, fileKey is the orderId
+    // Find the file and return its absolute path
+    const tenantDir = path.join(this.baseDir, tenantId)
+    const files = await fs.readdir(tenantDir)
+    const file = files.find((f) => f.startsWith(fileKey))
+
+    if (!file) {
+      throw new Error(
+        `File not found for fileKey: ${fileKey} in tenant: ${tenantId}`
+      )
+    }
+
+    const filePath = path.join(tenantDir, file)
+    return path.resolve(filePath)
+  }
+
+  /**
+   * Delete a file from local storage.
+   *
+   * @param fileKey - Absolute file path to delete
+   *
+   * @throws Error if deletion fails
+   *
+   * @example
+   * ```typescript
+   * await storage.deleteFile('/absolute/path/to/uploads/tenant-123/order-456.pdf')
+   * ```
+   */
+  async deleteFile(fileKey: string): Promise<void> {
+    await fs.unlink(fileKey)
+  }
+
+  /**
+   * Save an uploaded file to tenant-specific directory (internal method).
    *
    * @param tenantId - Unique tenant identifier
    * @param orderId - Order ID for filename
@@ -46,18 +136,9 @@ export class LocalFileStorage {
    *
    * @throws Error if file write fails
    *
-   * @example
-   * ```typescript
-   * const filePath = await storage.saveFile(
-   *   'tenant-123',
-   *   'order-456',
-   *   uploadedFile,
-   *   '.jpg'
-   * )
-   * // Returns: '/absolute/path/to/uploads/tenant-123/order-456.jpg'
-   * ```
+   * @private
    */
-  async saveFile(
+  private async saveFile(
     tenantId: string,
     orderId: string,
     file: File,
@@ -189,5 +270,22 @@ export class LocalFileStorage {
    */
   getBaseDir(): string {
     return path.resolve(this.baseDir)
+  }
+
+  /**
+   * Get file extension from content type.
+   *
+   * @param contentType - MIME type
+   * @returns File extension with leading dot (e.g., '.pdf', '.jpg')
+   *
+   * @private
+   */
+  private getExtension(contentType: string): string {
+    const extensions: Record<string, string> = {
+      'application/pdf': '.pdf',
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+    }
+    return extensions[contentType] || ''
   }
 }

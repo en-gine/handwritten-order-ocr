@@ -7,6 +7,7 @@ import {
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import type { FileStorage } from './interface'
 
 /**
  * Cloudflare R2 file storage implementation for production environment.
@@ -23,7 +24,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
  * tenant-abc123/order-456.jpg
  * tenant-xyz789/order-101.pdf
  */
-export class R2FileStorage {
+export class R2FileStorage implements FileStorage {
   private client: S3Client
   private bucketName: string
 
