@@ -48,7 +48,7 @@
 - [X] T014 Create test tenant database: `turso db create ocr-tenant-test --from-db ocr-seed-db`
 - [X] T015 Add raw SQL migration for F32_BLOB vector columns (products.embedding, customer_context.embedding, order_history.embedding) in migrations/002_add_vector_embeddings.sql
 - [X] T016 Apply vector migration to seed database
-- [ ] T017 Create DiskANN vector indexes with cosine metric in migration SQL
+- [X] T017 Create DiskANN vector indexes with cosine metric in migration SQL
 
 ### Core Libraries & Utilities
 
