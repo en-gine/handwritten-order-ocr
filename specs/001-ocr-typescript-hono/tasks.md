@@ -60,7 +60,7 @@
 - [X] T023 [P] Implement Cloudflare R2 storage class (R2FileStorage) in src/lib/storage/r2.ts
 - [X] T024 [P] Create storage factory (createStorage) with environment-based switching in src/lib/storage/factory.ts
 - [X] T025 [P] Define FileStorage interface in src/lib/storage/interface.ts
-- [ ] T026 [P] Implement configuration loader for AI model, thresholds, storage settings in src/lib/config.ts
+- [X] T026 [P] Implement configuration loader for AI model, thresholds, storage settings in src/lib/config.ts
 
 ### Authentication & Multi-Tenancy
 
