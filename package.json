@@ -19,7 +19,14 @@
     "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"prisma/**/*.ts\""
   },
-  "keywords": ["ocr", "handwriting", "gemini", "turso", "hono", "typescript"],
+  "keywords": [
+    "ocr",
+    "handwriting",
+    "gemini",
+    "turso",
+    "hono",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -37,8 +44,8 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.908.0",
-    "@aws-sdk/s3-request-presigner": "^3.908.0",
+    "@aws-sdk/client-s3": "^3.910.0",
+    "@aws-sdk/s3-request-presigner": "^3.910.0",
     "@google/generative-ai": "^0.24.1",
     "@hono/node-server": "^1.19.5",
     "@libsql/client": "^0.15.15",
