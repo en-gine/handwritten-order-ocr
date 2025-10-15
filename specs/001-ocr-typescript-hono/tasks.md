@@ -74,7 +74,7 @@
 
 - [X] T032 Initialize Hono app in src/api/index.ts with CORS, error handling, and middleware chain
 - [X] T033 Create health check endpoint GET /health in src/api/routes/health.ts
-- [ ] T034 Setup API route structure: src/api/routes/ocr.ts, src/api/routes/review.ts, src/api/routes/master.ts, src/api/routes/tenants.ts
+- [X] T034 Setup API route structure: src/api/routes/ocr.ts, src/api/routes/review.ts, src/api/routes/master.ts, src/api/routes/tenants.ts
 - [ ] T035 Create server entry point in src/index.ts with graceful shutdown handling
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel

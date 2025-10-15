@@ -185,16 +185,14 @@ app.get('/', (c) => {
 // Health check endpoint (no authentication required)
 app.route('/health', health)
 
-/**
- * NOTE: Additional route modules will be registered here once created:
- *
- * import { ocrRoutes } from './routes/ocr'
- * import { reviewRoutes } from './routes/review'
- * import { masterRoutes } from './routes/master'
- * import { tenantRoutes } from './routes/tenants'
- *
- * app.route('/v1/ocr', ocrRoutes)
- * app.route('/v1/reviews', reviewRoutes)
- * app.route('/v1/master', masterRoutes)
- * app.route('/v1/tenants', tenantRoutes)
- */
+// Import API route modules
+import ocr from './routes/ocr.js'
+import review from './routes/review.js'
+import master from './routes/master.js'
+import tenants from './routes/tenants.js'
+
+// Register API v1 routes
+app.route('/v1/ocr', ocr)
+app.route('/v1/reviews', review)
+app.route('/v1/master', master)
+app.route('/v1/tenants', tenants)
