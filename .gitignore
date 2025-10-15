@@ -11,6 +11,9 @@ dist/
 .env.local
 .env.*.local
 
+# RSA keys (JWT signing)
+*.pem
+
 # IDE
 .vscode/
 .idea/
