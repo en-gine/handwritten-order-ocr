@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { HTTPException } from 'hono/http-exception'
+import health from './routes/health.js'
 
 /**
  * Hono application initialization for multi-tenant OCR API.
@@ -178,15 +179,20 @@ app.get('/', (c) => {
 })
 
 /**
- * NOTE: Route modules will be imported and registered here once created:
+ * Route registration
+ */
+
+// Health check endpoint (no authentication required)
+app.route('/health', health)
+
+/**
+ * NOTE: Additional route modules will be registered here once created:
  *
- * import { healthRoutes } from './routes/health'
  * import { ocrRoutes } from './routes/ocr'
  * import { reviewRoutes } from './routes/review'
  * import { masterRoutes } from './routes/master'
  * import { tenantRoutes } from './routes/tenants'
  *
- * app.route('/health', healthRoutes)
  * app.route('/v1/ocr', ocrRoutes)
  * app.route('/v1/reviews', reviewRoutes)
  * app.route('/v1/master', masterRoutes)
