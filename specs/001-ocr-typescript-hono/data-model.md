@@ -6,8 +6,8 @@ This document defines the database schema for the multi-tenant handwritten order
 
 ## Architecture Overview
 
-- **Multi-tenancy**: Turso Multi-DB Schemas (separate database per tenant via child databases)
-- **Schema Management**: Parent schema DB defines structure, propagates to all child DBs
+- **Multi-tenancy**: Separate Turso databases per tenant (created from seed database template via `--from-db` flag)
+- **Schema Management**: Seed database template defines structure, new tenants inherit schema automatically
 - **ORM**: Prisma with `@prisma/adapter-libsql` driver adapter
 - **Vector Storage**: Native libSQL `F32_BLOB` type for semantic embeddings (768 dimensions)
 - **Indexes**: DiskANN vector indexes (`libsql_vector_idx`) for similarity search
@@ -34,11 +34,11 @@ datasource db {
 // ======================
 
 /// Tenant represents an isolated organization using the OCR API
-/// Each tenant has a dedicated Turso child database
+/// Each tenant has a dedicated Turso database (created from seed template)
 model Tenant {
   id                  String   @id @default(uuid())
   name                String
-  databaseName        String   @unique // Turso child database name (e.g., "ocr-tenant-abc123")
+  databaseName        String   @unique // Turso tenant database name (e.g., "ocr-tenant-abc123")
   databaseUrl         String   // libsql://tenant-abc123.turso.io
   databaseHostname    String   // tenant-abc123.turso.io
   apiKey              String?  @unique // Optional: for API key auth (if not using JWT)
@@ -115,7 +115,7 @@ model OrderItem {
 /// Customer master data (imported via CSV/JSON, scoped to tenant)
 model Customer {
   id             String   @id @default(uuid())
-  tenantId       String   // Implicit: in tenant's child DB
+  tenantId       String   // Implicit: stored in tenant's database
   customerCode   String   @unique // Tenant-defined unique code
   name           String
   nameVariations String?  // JSON array: ["田中商店", "田中", "Tanaka Shoten"]
@@ -135,7 +135,7 @@ model Customer {
 /// Product master data (imported via CSV/JSON, scoped to tenant)
 model Product {
   id             String  @id @default(uuid())
-  tenantId       String  // Implicit: in tenant's child DB
+  tenantId       String  // Implicit: stored in tenant's database
   productCode    String  @unique // Tenant-defined unique code
   productName    String
   nameVariations String? // JSON array: ["ビール大瓶", "ビール大", "beer large"]
@@ -265,7 +265,7 @@ model ProcessingResult {
 
 ```
 Tenant (stored in service DB)
-    ↓ (1:N, implicit via separate child DBs)
+    ↓ (1:N, implicit via separate tenant DBs)
 
 Customer ←→ Order ←→ OrderItem → Product
     ↓           ↓
@@ -469,7 +469,7 @@ ReviewQueue.reviewStatus:
 
 ## Tenant Metadata Storage
 
-**Service Database** (separate from tenant child DBs):
+**Service Database** (separate from tenant databases):
 - Stores `Tenant` model records
 - Maps `tenant_id` → `databaseUrl` for routing
 - Shared across all tenants (no tenant_id filtering needed)
@@ -482,7 +482,7 @@ const tenant = await serviceDb.tenant.findUnique({
   select: { databaseUrl: true, confidenceThreshold: true, aiModel: true }
 });
 
-// Connect to tenant's child database
+// Connect to tenant's database
 const tenantDb = prismaFactory.getClient(tenant.databaseUrl);
 ```
 
@@ -499,14 +499,14 @@ npx prisma migrate dev --name add_customer_notes
 # Output: prisma/migrations/20250114_add_customer_notes/migration.sql
 ```
 
-### 2. Apply to Parent Schema DB
+### 2. Apply to Seed Database Template
 
 ```bash
-# Apply to Turso parent schema DB (new tenants inherit)
+# Apply to Turso seed database (new tenants inherit)
 turso db shell ocr-seed-db < prisma/migrations/20250114_add_customer_notes/migration.sql
 ```
 
-### 3. Apply to Existing Tenant DBs
+### 3. Apply to Existing Tenant Databases
 
 ```bash
 # Run migration script for existing tenants
@@ -546,7 +546,7 @@ async function migrateTenantDatabases(migrationName: string) {
 }
 ```
 
-### Product Record (Tenant Child DB)
+### Product Record (Tenant Database)
 
 ```json
 {
@@ -660,7 +660,7 @@ const client2 = prismaFactory.getClient(tenant1.databaseUrl); // cache hit
 1. **Create Prisma schema file** at `prisma/schema.prisma` (copy content above)
 2. **Generate Prisma Client**: `npx prisma generate`
 3. **Create initial migration**: `npx prisma migrate dev --name init`
-4. **Apply to Turso parent DB**: `turso db shell ocr-seed-db < prisma/migrations/*/migration.sql`
+4. **Apply to Turso seed DB**: `turso db shell ocr-seed-db < prisma/migrations/*/migration.sql`
 5. **Add vector columns**: Apply `002_add_vector_embeddings.sql` migration
 6. **Create service DB**: `turso db create ocr-service-db` (for Tenant metadata)
 7. **Implement Prisma Client factory** (see `research.md` Section 1)

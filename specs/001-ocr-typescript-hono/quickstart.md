@@ -51,18 +51,18 @@ This installs:
 
 ## Database Setup
 
-The system uses Turso's Multi-DB Schemas architecture with separate databases per tenant.
+The system uses separate Turso databases per tenant, where each tenant database is created from a seed database template using the `--from-db` flag.
 
-### 1. Create Parent Schema Database
+### 1. Create Seed Database Template
 
-The parent database defines the schema that propagates to all tenant databases:
+The seed database serves as a template that new tenant databases inherit from:
 
 ```bash
-# Create parent schema database (local development)
-turso db create ocr-schema-db --type schema
+# Create seed database (local development)
+turso db create ocr-seed-db
 
 # Get the database URL (save for later)
-turso db show ocr-schema-db --url
+turso db show ocr-seed-db --url
 ```
 
 ### 2. Create Service Database
@@ -82,8 +82,8 @@ turso db show ocr-service-db --url
 Create at least one tenant database for development:
 
 ```bash
-# Create a test tenant database (inherits schema from parent)
-turso db create ocr-tenant-test --from-db ocr-schema-db
+# Create a test tenant database (inherits schema from seed template)
+turso db create ocr-tenant-test --from-db ocr-seed-db
 
 # Get the database URL
 turso db show ocr-tenant-test --url
@@ -94,8 +94,8 @@ turso db show ocr-tenant-test --url
 Generate authentication tokens for database connections:
 
 ```bash
-# Generate token for parent schema database
-turso db tokens create ocr-schema-db
+# Generate token for seed database
+turso db tokens create ocr-seed-db
 
 # Generate token for service database
 turso db tokens create ocr-service-db
@@ -128,9 +128,9 @@ NODE_ENV=development
 SERVICE_DATABASE_URL=libsql://ocr-service-db-[your-org].turso.io
 SERVICE_DATABASE_TOKEN=your-service-db-token-here
 
-# Parent Schema Database (defines structure)
-SCHEMA_DATABASE_URL=libsql://ocr-schema-db-[your-org].turso.io
-SCHEMA_DATABASE_TOKEN=your-schema-db-token-here
+# Seed Database Template (defines structure for new tenants)
+SEED_DATABASE_URL=libsql://ocr-seed-db-[your-org].turso.io
+SEED_DATABASE_TOKEN=your-seed-db-token-here
 
 # Test Tenant Database (for local development)
 TEST_TENANT_ID=tenant-test
@@ -179,18 +179,18 @@ This generates the Prisma Client based on `prisma/schema.prisma`.
 
 ### 2. Apply Schema Migrations
 
-Apply the initial schema to the parent database:
+Apply the initial schema to the seed database:
 
 ```bash
-# Apply migrations to parent schema database
+# Apply migrations to seed database template
 npx prisma migrate deploy
 ```
 
-The schema will automatically propagate to all child databases (including `ocr-tenant-test`).
+New tenant databases created with `--from-db ocr-seed-db` will automatically inherit this schema.
 
-### 3. Verify Schema Propagation
+### 3. Verify Schema Inheritance
 
-Check that the test tenant database has the correct schema:
+Check that the test tenant database inherited the correct schema:
 
 ```bash
 turso db shell ocr-tenant-test
@@ -347,13 +347,13 @@ When you modify `prisma/schema.prisma`:
 npx prisma migrate dev --name add_customer_notes
 ```
 
-2. Apply to parent schema database:
+2. Apply to seed database template:
 
 ```bash
-turso db shell ocr-schema-db < prisma/migrations/XXXXXX_add_customer_notes/migration.sql
+turso db shell ocr-seed-db < prisma/migrations/XXXXXX_add_customer_notes/migration.sql
 ```
 
-3. Schema automatically propagates to all tenant databases.
+3. New tenant databases will automatically inherit the updated schema. Existing tenants need manual migration (see "Running Database Migrations for Existing Tenants" below).
 
 ### Provisioning New Tenants
 
@@ -367,7 +367,7 @@ npm run tenant:provision -- \
 ```
 
 This:
-- Creates a new Turso child database
+- Creates a new Turso tenant database from seed template (via `--from-db`)
 - Generates authentication credentials
 - Registers tenant in service database
 - Returns tenant API key/JWT

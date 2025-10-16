@@ -41,7 +41,7 @@
 
 - [ ] T008 Create Prisma schema in prisma/schema.prisma with Tenant, Order, OrderItem, Customer, Product, OrderHistory, CustomerContext, ReviewQueue, ProcessingResult models (per data-model.md)
 - [ ] T009 Generate initial Prisma migration for base schema
-- [ ] T010 Create Turso parent seed database via CLI: `turso db create ocr-seed-db --group default`
+- [ ] T010 Create Turso seed database template via CLI: `turso db create ocr-seed-db --group ai-ocr`
 - [X] T011 Apply initial Prisma migration to seed database
 - [X] T012 Create service database for tenant metadata: `turso db create ocr-service-db`
 - [X] T013 Apply Tenant model migration to service database
@@ -101,8 +101,11 @@
 - [ ] T045 [US1] Store uploaded file via storage factory (local or R2 based on environment)
 - [ ] T046 [US1] Save ProcessingResult record with raw Gemini response, extracted fields, confidence scores
 - [ ] T047 [US1] Return structured JSON response (orderId, status, overallConfidence, customer, items, submissionTime, processingTime)
+- [ ] T047a [US1] Implement batch upload endpoint POST /v1/ocr/batch (accept array of files in multipart/form-data, return array of OrderResponse with individual processing results)
+- [ ] T047b [US1] Add parallel processing with concurrency control for batch uploads (process up to 5 orders concurrently per tenant to prevent resource exhaustion, queue remaining orders)
+- [ ] T047c [US1] Implement batch result aggregation (return combined statistics: total processed, successful, failed, average confidence, total processing time)
 
-**Checkpoint**: At this point, User Story 1 should be fully functional - operators can upload clear order forms and receive accurate JSON output
+**Checkpoint**: At this point, User Story 1 should be fully functional - operators can upload clear order forms (single or batch) and receive accurate JSON output
 
 ---
 
@@ -123,8 +126,14 @@
 - [ ] T054 [US3] Generate presigned URLs for original order images in review interface (1-hour expiry)
 - [ ] T055 [US3] Update OrderItem records with humanCorrectedProduct field when operator makes corrections
 - [ ] T056 [US3] Add review audit logging (who reviewed, what changed, when) in ProcessingResult or review_notes field
+- [ ] T056a [US3] Add draft fields to ReviewQueue model (draftCustomerCorrection, draftItemCorrections, draftReviewNotes as JSON strings) and lastActivityAt timestamp
+- [ ] T056b [US3] Implement PATCH /v1/reviews/{orderId}/draft endpoint for auto-save functionality (save partial corrections every 30 seconds with status=in_progress, update lastActivityAt)
+- [ ] T056c [US3] Implement concurrent review prevention in GET /v1/reviews/{orderId} (check if status=in_progress by another operator, return 409 Conflict with Japanese message including operator name)
+- [ ] T056d [US3] Implement review session timeout cleanup service (background job every 5 minutes: check lastActivityAt > 30 minutes → set assignedOperator=null, status=pending, preserve draft)
+- [ ] T056e [US3] Update review service to load draft on resume (when operator re-opens in_progress review, pre-populate form fields from draft JSON)
+- [ ] T056f [US3] Add auto-save status indicator to review response (return lastSavedAt timestamp, frontend calculates "保存済み: X分前")
 
-**Checkpoint**: At this point, User Stories 1 AND 3 form a complete MVP - clear orders auto-process, unclear orders go to review queue
+**Checkpoint**: At this point, User Stories 1 AND 3 form a complete MVP - clear orders auto-process, unclear orders go to review queue with draft auto-save functionality
 
 ---
 
@@ -203,8 +212,8 @@
 **Purpose**: Allow administrators to provision new tenants and manage tenant settings
 
 - [ ] T088 [P] Implement POST /v1/tenants endpoint in src/api/routes/tenants.ts (admin-only, requires special admin JWT claim)
-- [ ] T089 Implement tenant provisioning service in src/services/tenant.service.ts (create Turso child database, generate API credentials, register in service DB)
-- [ ] T090 [P] Add tenant creation logic: call Turso Platform API to create database with seed template
+- [ ] T089 Implement tenant provisioning service in src/services/tenant.service.ts (create Turso tenant database via --from-db, generate API credentials, register in service DB)
+- [ ] T090 [P] Add tenant creation logic: call Turso Platform API to create database from seed template (--from-db ocr-seed-db)
 - [ ] T091 [P] Generate JWT token for new tenant with tenant_id, permissions, rate_limit_tier claims
 - [ ] T092 Update service database with tenant metadata (databaseUrl, confidenceThreshold, aiModel, rateLimitTier)
 - [ ] T093 Return tenant credentials in API response (tenantId, databaseUrl, apiKey/JWT)

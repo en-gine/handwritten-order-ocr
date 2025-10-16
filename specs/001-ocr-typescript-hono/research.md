@@ -1697,31 +1697,31 @@ This section provides comprehensive analysis and implementation patterns for aut
 
 ---
 
-### 5.1 Turso Multi-DB Schemas Setup
+### 5.1 Turso Separate Database Architecture
 
 #### Architecture Overview
 
-Turso's Multi-DB Schemas architecture provides complete tenant data isolation:
+Turso's separate database per tenant architecture provides complete tenant data isolation:
 
 ```
-Parent Schema DB (schema-definition-only)
+Seed Database Template (ocr-seed-db)
 ├── Schema: customers, products, orders, order_items, order_history
-├── Migrations: Applied once, propagate to all children
-└── No data stored
+├── Migrations: Applied to seed DB, new tenants inherit automatically
+└── No tenant data stored (template only)
 
-Tenant Child DBs (data-isolated per tenant)
+Tenant Databases (data-isolated per tenant, created via --from-db)
 ├── tenant-abc123.turso.io → Customer A's data
 ├── tenant-def456.turso.io → Customer B's data
 └── tenant-ghi789.turso.io → Customer C's data
 ```
 
 **Key Benefits for Multi-Tenancy**:
-- **Auto-propagating schemas**: Update parent schema, changes cascade to all 500-10,000 child DBs
-- **Zero-downtime migrations**: Each child DB migrates independently
+- **Seed template pattern**: Update seed DB, new tenants automatically inherit latest schema
+- **Independent migrations**: Each tenant DB can be migrated independently as needed
 - **Complete isolation**: No cross-tenant queries possible (security by architecture)
 - **Cost efficiency**: Turso charges based on total row reads, not DB count
 
-#### Prisma Integration with Multi-DB Schemas
+#### Prisma Integration with Separate Tenant Databases
 
 **Challenge**: Prisma Client is not optimized for dynamic database switching. Each Prisma Client instance holds connection pools and schema metadata (~5-10MB per instance).
 
@@ -1904,8 +1904,8 @@ export const tenantRateLimiter = rateLimiter({
 - [ ] Create refresh token database schema
 
 **Phase 2: Multi-Tenancy**
-- [ ] Set up Turso Multi-DB Schemas
-- [ ] Implement tenant provisioning service
+- [ ] Set up Turso separate database architecture (seed DB + tenant DBs)
+- [ ] Implement tenant provisioning service (create tenant DBs via --from-db)
 - [ ] Build Prisma Client cache with LRU eviction
 - [ ] Test cross-tenant data isolation
 
