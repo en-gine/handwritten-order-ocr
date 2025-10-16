@@ -13,7 +13,7 @@
 - Q: For storing customer order history and contextual patterns, which storage approach should be used? → A: Turso (SQLite) with vector embeddings for semantic matching
 - Q: When the AI service (Gemini) fails or is unavailable, what should the system do? → A: Retry 3 times with exponential backoff, then fail the request with error message
 - Q: When extracted product names don't match any entry in the product master database, how should the system handle them? → A: Accept with confidence=0%, flag entire order for review
-- Q: How should tenant isolation be implemented for the multi-tenant OCR API (each tenant has separate customer/product masters)? → A: Turso Multi-DB Schemas (separate database per tenant with automated schema propagation from parent database)
+- Q: How should tenant isolation be implemented for the multi-tenant OCR API (each tenant has separate customer/product masters)? → A: Separate Turso databases per tenant (each tenant database created from seed database template using `--from-db` flag)
 - Q: How should tenant-specific product and customer master data be implemented? → A: Data import approach - store master data as tables in each tenant's Turso database with CSV/JSON import capability
 
 ## User Scenarios & Testing *(mandatory)*
@@ -102,16 +102,16 @@ When processing an order form, the system identifies the customer by matching ha
 
 ### Edge Cases
 
-- What happens when an uploaded file is completely unreadable (e.g., blank page, corrupted image, non-order document like an invoice)?
+- **[RESOLVED]** When uploaded file is completely unreadable (blank page, corrupted image, non-order document): System detects via Gemini API error or empty extraction result → Returns 400 Bad Request with Japanese error message "アップロードされたファイルから注文データを抽出できませんでした。手書き注文書が含まれているか確認してください。" → Operator can reupload correct file
 - **[RESOLVED]** When orders contain products not in the master database (new products or typos): System assigns confidence=0% to unmatched products and flags the entire order for operator review, preserving the original extracted text
-- What happens when customer history shows conflicting patterns (e.g., customer ordered Product A for 6 months, then switched to Product B for the last 3 months - which is "いつもの")?
-- How does the system handle multi-page order forms or forms with non-standard layouts?
-- What happens when confidence scores are borderline (e.g., 69.9% vs 70% threshold)?
+- **[RESOLVED]** When customer history shows conflicting patterns (e.g., customer ordered Product A for 6 months, then switched to Product B for last 3 months): System prioritizes recent orders (last 30 days by default, configurable) over older patterns. If "いつもの" detected, returns top 3 most frequent products from recent period ranked by frequency and recency. Operator selects correct interpretation from suggestions in review interface
+- **[RESOLVED]** Multi-page order forms and non-standard layouts: System accepts PDF with multiple pages. Gemini API processes all pages together and extracts order items across pages. Non-standard layouts handled by AI's vision capabilities. If extraction fails, entire order flagged for review with confidence=0%
+- **[RESOLVED]** Borderline confidence scores (e.g., 69.9% vs 70%): System uses >= threshold comparison (70.0% and above auto-confirms, 69.9% and below flags for review). No rounding applied. Operators can adjust per-tenant threshold in increments of 0.01 to fine-tune sensitivity based on business risk tolerance
 - **[RESOLVED]** When the AI service (Gemini) is unavailable or returns errors: System retries 3 times with exponential backoff, then fails the request with a clear error message allowing operator to resubmit later
-- What happens when an operator partially reviews an order but doesn't complete it (session timeout, browser crash)?
-- How does the system handle orders with mixed languages (Japanese and English product names)?
-- What happens when quantity fields contain corrections/cross-outs (e.g., "5" crossed out and "7" written beside it)?
-- How does the system manage concurrent reviews of the same order by multiple operators?
+- **[RESOLVED]** Partial review session handling (timeout, browser crash): System implements auto-save draft functionality. Review queue items have status: pending → in_progress → completed. When operator starts review, changes are auto-saved periodically (every 30 seconds) with status=in_progress. Operator can explicitly save draft and continue later, or click "確定" to complete review (status=completed). If operator doesn't interact for configurable timeout (default 30 minutes), status remains in_progress and draft persists, allowing operator to resume from any device
+- **[RESOLVED]** Mixed language orders (Japanese and English): System processes orders with Japanese text only. Gemini API natively supports Japanese handwriting recognition. Product matching service searches against Japanese product names and variations in Product.nameVariations field. English product names should be registered in nameVariations if needed for matching
+- **[RESOLVED]** Quantity corrections/cross-outs (e.g., "5" crossed out, "7" beside): Gemini vision model attempts to interpret latest/clearest value. If ambiguous, system extracts both values in processingResult.rawResponse, assigns low confidence (<50%), and flags for human review. Operator sees original image and selects correct quantity
+- **[RESOLVED]** Concurrent review prevention: When operator opens order for review (GET /v1/reviews/{orderId}), system checks ReviewQueue.reviewStatus. If status is already "in_progress" by another operator, returns 409 Conflict with Japanese message "この注文は現在別のオペレーターによってレビュー中です（担当: [operator_name]）" showing assigned operator name. First operator to open sets status=in_progress with their operator ID, blocking concurrent edits. Auto-timeout (30 min) releases lock if no activity detected
 
 ## Requirements *(mandatory)*
 
@@ -146,28 +146,34 @@ When processing an order form, the system identifies the customer by matching ha
 - **FR-027**: System MUST return clear error messages when AI service is unavailable after retry attempts, allowing operators to resubmit later
 - **FR-028**: When extracted product names do not match any product in the master database, system MUST assign confidence score of 0% to those items and flag the entire order for manual review
 - **FR-029**: System MUST preserve the original extracted product text (even if unmatched) for operator review and correction
-- **FR-030**: System MUST isolate each tenant's data using separate Turso databases (via Multi-DB Schemas) to ensure complete data separation between tenants
+- **FR-030**: System MUST isolate each tenant's data using separate Turso databases (created from seed database template) to ensure complete data separation between tenants
 - **FR-031**: System MUST route API requests to the appropriate tenant database based on authenticated tenant identity (via API key, JWT claim, or header)
 - **FR-032**: System MUST prevent cross-tenant data access under all circumstances, including in error conditions and logging
 - **FR-033**: System MUST store tenant-specific product master data as tables within each tenant's Turso database
 - **FR-034**: System MUST store tenant-specific customer master data as tables within each tenant's Turso database
 - **FR-035**: System MUST support importing product and customer master data in CSV and JSON formats
 - **FR-036**: System MUST support both full replacement and incremental update modes for master data imports
+- **FR-037**: Review interface MUST implement auto-save draft functionality that saves operator changes every 30 seconds (configurable) while maintaining review status as "in_progress"
+- **FR-038**: System MUST allow operators to resume review sessions from any device by persisting draft changes in ReviewQueue table (draftCustomerCorrection, draftItemCorrections, draftReviewNotes fields)
+- **FR-039**: When operator opens an order already being reviewed (status=in_progress by another operator), system MUST return 409 Conflict with Japanese message showing the assigned operator name
+- **FR-040**: Review session inactivity timeout (default 30 minutes from lastActivityAt) MUST release operator assignment (assignedOperator=null, status=pending) while preserving draft corrections for next operator to resume
+- **FR-041**: Review interface MUST display auto-save status indicator showing time elapsed since last save (e.g., "保存済み: 3分前")
+- **FR-042**: Review interface MUST provide two distinct actions: "下書き保存" (explicit draft save maintaining status=in_progress) and "確定" button (complete review changing status to completed and Order status to CONFIRMED/REJECTED)
 
 ### Non-Functional Requirements
 
 - **NFR-001**: OCR processing latency MUST be between 5-15 seconds from API submission to JSON response delivery for single order forms to ensure responsive operator workflow
-- **NFR-002**: System MUST maintain processing latency target even under load of 100 concurrent uploads (per SC-007)
-- **NFR-003**: System MUST use Turso Multi-DB Schemas architecture where a parent schema database defines the structure and each tenant gets a dedicated child database that automatically inherits schema changes, ensuring zero-downtime migrations across all tenants
+- **NFR-002**: System MUST maintain processing latency within acceptable degradation under load of 100 concurrent uploads: P95 latency ≤ 20 seconds (vs 5-15s baseline), error rate < 1%, no request timeouts (per SC-007)
+- **NFR-003**: System MUST use separate Turso databases per tenant architecture where each tenant has a dedicated database created from a seed database template (via `--from-db` flag), ensuring complete data isolation and allowing independent schema migrations per tenant via Prisma
 
 ### Key Entities
 
-- **Tenant**: Represents an isolated customer organization using the OCR API, containing: unique identifier, dedicated Turso child database reference, API authentication credentials, configuration settings (confidence thresholds, AI model selection), subscription/billing information
+- **Tenant**: Represents an isolated customer organization using the OCR API, containing: unique identifier, dedicated Turso database reference (separate database per tenant), API authentication credentials, configuration settings (confidence thresholds, AI model selection), subscription/billing information
 - **Order**: Represents a single handwritten order submission within a tenant's database, containing: tenant reference (implicit via database isolation), customer reference, submission timestamp, processing status (pending/reviewing/confirmed/rejected), overall confidence score, list of order items, original document reference, review history
 - **Order Item**: Individual product line on an order, containing: product reference, quantity, unit of measure, confidence score, verification status, human correction history
 - **Customer**: Business entity placing orders (scoped to tenant), stored as master data table in tenant's Turso database, containing: unique identifier, name variations (for matching), contact information, relationship to order history, imported from tenant-provided CSV/JSON files
 - **Product**: Items available for ordering (scoped to tenant), stored as master data table in tenant's Turso database, containing: unique identifier/code, product name, name variations/aliases, unit of measure, relationship to order items, imported from tenant-provided CSV/JSON files
-- **Order History**: Historical record of confirmed orders stored in tenant-specific Turso child database, containing: customer reference, order date, ordered products with quantities, vector embeddings of product combinations for semantic matching, used for pattern recognition and "usual order" interpretation
+- **Order History**: Historical record of confirmed orders stored in tenant-specific Turso database, containing: customer reference, order date, ordered products with quantities, vector embeddings of product combinations for semantic matching, used for pattern recognition and "usual order" interpretation
 - **Review Queue Item**: An order or order item flagged for human review, containing: reference to order/item, reason for flagging (low confidence, unknown product, etc.), assigned operator, review status
 - **Processing Result**: Output from AI model processing, containing: extracted fields, confidence scores per field, raw model response, processing timestamp
 - **Customer Context**: Customer-specific historical patterns stored in tenant's Turso database with vector embeddings, containing: frequently ordered products, common abbreviations/shorthand used, ordering patterns/frequencies, correction history, semantic vectors for fuzzy matching of product references
@@ -203,18 +209,18 @@ When processing an order form, the system identifies the customer by matching ha
 - Customer order history should be retained for at least 12 months for pattern recognition
 - The system will primarily handle B2B orders where customers order regularly (not one-time retail customers)
 - Each tenant operates independently with no data sharing between tenants; customer and product masters are tenant-specific
-- Tenant provisioning (creating new child databases) can be done via Turso CLI or Platform API as part of onboarding process
-- Schema migrations applied to the parent database will automatically propagate to all tenant child databases with acceptable latency (monitored via Turso's /jobs endpoint)
+- Tenant provisioning (creating new databases from seed template) can be done via Turso CLI or Platform API as part of onboarding process
+- Schema migrations are applied by updating the seed database, then new tenants inherit the latest schema automatically; existing tenants can be migrated independently via Prisma migrations
 - Product and customer master data updates occur at daily to weekly intervals (not real-time), making data import approach suitable
 - Master data import files (CSV/JSON) are provided by tenants with consistent schema (column names, data types)
 - Master data freshness requirements allow for periodic batch imports rather than continuous synchronization
 
 ## Dependencies
 
-- Turso Multi-DB Schemas infrastructure with parent schema database and per-tenant child databases, accessed via Prisma.js ORM for storing order history, customer/product master data, customer context, and vector embeddings for semantic matching
+- Turso database infrastructure with seed database template and per-tenant separate databases, accessed via Prisma.js ORM for storing order history, customer/product master data, customer context, and vector embeddings for semantic matching
 - Master data import mechanism supporting CSV and JSON parsing for customer and product data
 - API access to AI vision model service (Gemini 2.5 Flash or configurable alternative) with retry capability for transient failures
-- Turso Platform API or CLI access for tenant provisioning (creating new child databases) and monitoring schema migration jobs
+- Turso Platform API or CLI access for tenant provisioning (creating new databases from seed template via `--from-db` flag)
 - Storage system for uploaded order form images/PDFs and processing results (may be tenant-scoped or centralized with tenant metadata)
 - Tenant authentication and identification system (API keys, JWT tokens, or tenant-specific credentials) to route requests to correct database
 - User authentication system to identify operators performing reviews (or can be built as part of this feature if needed)

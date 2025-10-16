@@ -10,7 +10,7 @@
 Build a multi-tenant handwritten order OCR API that processes Japanese handwritten order forms (PDF/images) using AI vision models (Gemini 2.5 Flash), matches extracted data against tenant-specific customer/product masters stored in Turso databases, applies vector-based semantic matching with historical context for ambiguous references (e.g., "いつもの"), flags low-confidence results for human review, and returns structured JSON within 5-15 seconds.
 
 **Key Technical Decisions:**
-- **Multi-tenancy**: Turso Multi-DB Schemas (parent schema DB + per-tenant child DBs)
+- **Multi-tenancy**: Separate Turso databases per tenant (seed DB template + independent tenant DBs via `--from-db`)
 - **Master Data**: CSV/JSON import into tenant Turso databases (not external APIs)
 - **Stack**: TypeScript + Hono (API framework) + Mastra (AI orchestration) + Prisma.js (ORM) + Turso (database)
 - **AI Integration**: Gemini 2.5 Flash with configurable model selection and 3x retry with exponential backoff
@@ -28,10 +28,10 @@ Build a multi-tenant handwritten order OCR API that processes Japanese handwritt
 - CSV/JSON parsing libraries (csv-parser, zod for validation)
 
 **Storage**:
-- Turso (libSQL/SQLite) with Multi-DB Schemas architecture
-- Parent schema database for schema definition
-- Per-tenant child databases for isolated data
-- Vector embeddings stored in Turso (via libsql vector extension or JSON columns)
+- Turso (libSQL/SQLite) with separate database per tenant architecture
+- Seed database as template for schema definition
+- Per-tenant independent databases for isolated data (created via `--from-db`)
+- Vector embeddings stored in Turso (F32_BLOB native vector type)
 - File storage for uploaded order images/PDFs (local filesystem or cloud storage TBD in research)
 
 **Testing**:
@@ -164,11 +164,11 @@ config/
 
 Research tasks to resolve before implementation:
 
-1. **Turso Multi-DB Schemas Setup**
-   - How to create parent schema database via CLI/API
-   - How to provision per-tenant child databases programmatically
-   - How Prisma migrations work with Multi-DB Schemas
-   - Monitoring schema propagation via `/jobs` endpoint
+1. **Turso Separate Database Architecture**
+   - How to create seed database with schema via Prisma migrations
+   - How to provision per-tenant databases from seed template (`--from-db` flag)
+   - Managing independent Prisma migrations per tenant database
+   - Coordinating schema updates across multiple tenant databases
 
 2. **Vector Embeddings in Turso**
    - Best approach for storing/querying embeddings (libsql extension vs JSON columns)
