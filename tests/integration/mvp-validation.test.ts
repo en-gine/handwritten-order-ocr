@@ -31,6 +31,11 @@ describe('MVP Integration Tests', () => {
   let testImagePath: string
 
   beforeAll(async () => {
+    // Ensure DATABASE_URL is set for tests
+    if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.startsWith('file:')) {
+      throw new Error('DATABASE_URL must be set to a file: URL for tests (e.g., file:./tests/test.db)')
+    }
+
     // Initialize Prisma client for test database
     prisma = new PrismaClient({
       datasources: {
@@ -39,6 +44,9 @@ describe('MVP Integration Tests', () => {
         },
       },
     })
+
+    // Connect to database
+    await prisma.$connect()
 
     // Ensure test image exists
     testImagePath = path.join(process.cwd(), 'tests/fixtures/sample-orders/test-order.jpg')
@@ -261,7 +269,7 @@ describe('MVP Integration Tests', () => {
           draftCustomerCorrection: JSON.stringify(draftData.customerCorrection),
           draftItemCorrections: JSON.stringify(draftData.itemCorrections),
           draftReviewNotes: draftData.reviewNotes,
-          lastActivityAt: new Date(),
+          lastActivityAt: BigInt(Date.now()),
           reviewStatus: 'in_progress',
           assignedOperator: TEST_OPERATOR_1,
         },
@@ -325,8 +333,8 @@ describe('MVP Integration Tests', () => {
 
   describe('6. Session Timeout Cleanup', () => {
     it('should identify abandoned sessions', async () => {
-      // Set lastActivityAt to 31 minutes ago
-      const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000)
+      // Set lastActivityAt to 31 minutes ago (use BigInt for SQLite compatibility)
+      const thirtyOneMinutesAgo = BigInt(Date.now() - 31 * 60 * 1000)
 
       await prisma.reviewQueue.update({
         where: { orderId: testOrderId },
@@ -335,8 +343,8 @@ describe('MVP Integration Tests', () => {
         },
       })
 
-      // Find abandoned reviews (timeout threshold: 30 minutes)
-      const timeoutThreshold = new Date(Date.now() - 30 * 60 * 1000)
+      // Find abandoned reviews (timeout threshold: 30 minutes, use BigInt)
+      const timeoutThreshold = BigInt(Date.now() - 30 * 60 * 1000)
 
       const abandonedReviews = await prisma.reviewQueue.findMany({
         where: {
