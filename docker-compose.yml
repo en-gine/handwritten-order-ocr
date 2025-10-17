@@ -1,0 +1,54 @@
+# Docker Compose configuration for OCR API
+# For local development and testing
+
+version: '3.8'
+
+services:
+  ocr-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ocr-api
+    ports:
+      - "${API_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - API_PORT=3000
+      - SERVICE_DATABASE_URL=${SERVICE_DATABASE_URL}
+      - SERVICE_DATABASE_TOKEN=${SERVICE_DATABASE_TOKEN}
+      - SCHEMA_DATABASE_URL=${SCHEMA_DATABASE_URL}
+      - SCHEMA_DATABASE_TOKEN=${SCHEMA_DATABASE_TOKEN}
+      - TEST_TENANT_DATABASE_URL=${TEST_TENANT_DATABASE_URL}
+      - TEST_TENANT_DATABASE_TOKEN=${TEST_TENANT_DATABASE_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DEFAULT_AI_MODEL=${DEFAULT_AI_MODEL}
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - STORAGE_TYPE=${STORAGE_TYPE}
+      - TURSO_ORGANIZATION=${TURSO_ORGANIZATION}
+      - TURSO_API_TOKEN=${TURSO_API_TOKEN}
+      - TURSO_GROUP=${TURSO_GROUP}
+      - SEED_DATABASE_NAME=${SEED_DATABASE_NAME}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add monitoring services
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   command: --interval 30
+
+networks:
+  default:
+    name: ocr-network

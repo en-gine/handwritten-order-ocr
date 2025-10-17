@@ -2,7 +2,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { HTTPException } from 'hono/http-exception'
+import { errorHandler, notFoundHandler } from './middleware/error.js'
 import health from './routes/health.js'
 
 /**
@@ -93,70 +93,22 @@ app.use(
 )
 
 /**
- * Global error handler middleware.
+ * Global error handler middleware (T096).
  *
  * Catches all errors thrown in routes and middleware, and returns
- * consistent JSON error responses.
+ * consistent JSON error responses per OpenAPI spec.
  *
- * Error response format:
- * ```json
- * {
- *   "error": {
- *     "message": "Human-readable error message",
- *     "code": "ERROR_CODE",
- *     "status": 400
- *   }
- * }
- * ```
+ * Uses centralized error handler from middleware/error.ts
  */
-app.onError((err, c) => {
-  // Handle HTTPException (thrown by Hono or our middleware)
-  if (err instanceof HTTPException) {
-    return c.json(
-      {
-        error: {
-          message: err.message,
-          status: err.status,
-        },
-      },
-      err.status
-    )
-  }
-
-  // Handle generic errors
-  console.error('Unhandled error:', err)
-
-  // Return sanitized error message (don't leak internal details)
-  return c.json(
-    {
-      error: {
-        message:
-          process.env.NODE_ENV === 'production'
-            ? 'Internal server error'
-            : err.message || 'Internal server error',
-        status: 500,
-      },
-    },
-    500
-  )
-})
+app.onError(errorHandler)
 
 /**
  * 404 Not Found handler.
  *
  * Returns JSON error for any unmatched routes.
+ * Uses centralized notFound handler from middleware/error.ts
  */
-app.notFound((c) => {
-  return c.json(
-    {
-      error: {
-        message: `Route not found: ${c.req.method} ${c.req.path}`,
-        status: 404,
-      },
-    },
-    404
-  )
-})
+app.notFound(notFoundHandler)
 
 /**
  * Root route - API information.

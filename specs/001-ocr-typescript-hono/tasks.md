@@ -228,12 +228,12 @@
 
 - [ ] T094 [P] Add structured logging throughout services (log OCR processing time, confidence scores, errors, tenant context)
 - [ ] T095 [P] Implement audit trail logging in src/services/audit.service.ts (log all order processing, reviews, corrections, imports)
-- [ ] T096 [P] Add error handling middleware in src/api/middleware/error.ts (catch all errors, return consistent error responses per OpenAPI spec)
+- [X] T096 [P] Add error handling middleware in src/api/middleware/error.ts (catch all errors, return consistent error responses per OpenAPI spec)
 - [ ] T097 [P] Implement file retention cleanup service in src/services/retention.service.ts (delete files older than 365 days, scheduled task)
 - [ ] T098 [P] Add database migration script for existing tenants in scripts/migrate-tenant-databases.ts (fetch all tenants, apply migration SQL to each)
 - [ ] T099 [P] Create database seeding script in prisma/seed.ts (sample customers, products, orders for testing)
-- [ ] T100 [P] Add npm scripts to package.json (dev, build, test, test:coverage, db:seed, migrate:tenants, logs)
-- [ ] T101 [P] Create Docker configuration files (Dockerfile, docker-compose.yml) for containerized deployment
+- [X] T100 [P] Add npm scripts to package.json (dev, build, test, test:coverage, db:seed, migrate:tenants, logs, docker:build, docker:run, docker:compose)
+- [X] T101 [P] Create Docker configuration files (Dockerfile, docker-compose.yml, .dockerignore) for containerized deployment
 - [ ] T102 [P] Add monitoring/observability setup (Sentry integration, Datadog logging, or similar)
 - [ ] T103 [P] Create sample order form fixtures in tests/fixtures/sample-orders/ (clear handwriting, unclear handwriting, "いつもの" examples)
 - [ ] T104 [P] Create sample master data CSV/JSON files in tests/fixtures/master-data/ (customers.csv, products.csv, with various formats)
@@ -242,6 +242,8 @@
 - [ ] T107 [P] Code cleanup and refactoring (remove TODOs, consolidate utilities, optimize imports)
 - [ ] T108 [P] Performance optimization: profile OCR processing pipeline, optimize Prisma queries, tune vector search parameters
 - [ ] T109 [P] Security hardening: validate all inputs, sanitize file paths, prevent SQL injection, audit sensitive operations
+
+**Checkpoint**: ✅ Phase 9 (Essential Tasks Complete) - Error handling, Docker containerization, and npm scripts ready for production deployment
 
 ---
 

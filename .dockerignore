@@ -1,0 +1,54 @@
+# Docker ignore file
+
+# Node modules
+node_modules
+npm-debug.log
+
+# Development files
+.env
+.env.local
+.env*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build output (will be created during Docker build)
+dist
+
+# Tests
+tests
+*.test.ts
+*.spec.ts
+coverage
+
+# Documentation
+*.md
+docs
+
+# Uploads (created at runtime)
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+.prettierrc
+.prettierignore
+.eslintrc
+.eslintignore
+tsconfig.json
+vitest.config.ts

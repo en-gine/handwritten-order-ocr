@@ -21,9 +21,17 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:validate": "turso db shell ocr-tenant-test 'SELECT name FROM sqlite_master WHERE type=\"table\" ORDER BY name;'",
+    "db:studio": "prisma studio",
+    "migrate:tenants": "tsx scripts/migrate-tenant-databases.ts",
+    "logs": "tail -f logs/*.log 2>/dev/null || echo 'No log files found'",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.ts\" \"tests/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"prisma/**/*.ts\" \"tests/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\" \"prisma/**/*.ts\" \"tests/**/*.ts\"",
+    "docker:build": "docker build -t ocr-api .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env ocr-api",
+    "docker:compose": "docker-compose up -d"
   },
   "keywords": [
     "ocr",
