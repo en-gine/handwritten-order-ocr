@@ -117,15 +117,15 @@
 
 ### Implementation for User Story 3
 
-- [ ] T048 [P] [US3] Define review queue types in src/types/api.ts (ReviewQueueItem, ReviewUpdateRequest, ReviewUpdateResponse)
-- [ ] T049 [US3] Implement GET /v1/reviews endpoint in src/api/routes/review.ts (list orders with flaggedForReview=true, filter by status/flagReason/date, pagination support)
-- [ ] T050 [US3] Implement GET /v1/reviews/{orderId} endpoint to retrieve single review item with original file presigned URL
-- [ ] T051 [US3] Implement PATCH /v1/reviews/{orderId} endpoint to update order with corrections (customerCorrection, itemCorrections, reviewNotes)
-- [ ] T052 [US3] Create ReviewQueue record when order confidence falls below threshold in src/services/ocr.service.ts
-- [ ] T053 [US3] Implement review service in src/services/review.service.ts (update order with corrections, mark items as human_verified, change status to CONFIRMED/REJECTED)
-- [ ] T054 [US3] Generate presigned URLs for original order images in review interface (1-hour expiry)
-- [ ] T055 [US3] Update OrderItem records with humanCorrectedProduct field when operator makes corrections
-- [ ] T056 [US3] Add review audit logging (who reviewed, what changed, when) in ProcessingResult or review_notes field
+- [X] T048 [P] [US3] Define review queue types in src/types/api.ts (ReviewQueueItem, ReviewUpdateRequest, ReviewUpdateResponse)
+- [X] T049 [US3] Implement GET /v1/reviews endpoint in src/api/routes/review.ts (list orders with flaggedForReview=true, filter by status/flagReason/date, pagination support)
+- [X] T050 [US3] Implement GET /v1/reviews/{orderId} endpoint to retrieve single review item with original file presigned URL
+- [X] T051 [US3] Implement PATCH /v1/reviews/{orderId} endpoint to update order with corrections (customerCorrection, itemCorrections, reviewNotes)
+- [X] T052 [US3] Create ReviewQueue record when order confidence falls below threshold in src/services/ocr.service.ts
+- [X] T053 [US3] Implement review service in src/services/review.service.ts (update order with corrections, mark items as human_verified, change status to CONFIRMED/REJECTED)
+- [X] T054 [US3] Generate presigned URLs for original order images in review interface (1-hour expiry)
+- [X] T055 [US3] Update OrderItem records with humanCorrectedProduct field when operator makes corrections
+- [X] T056 [US3] Add review audit logging (who reviewed, what changed, when) in ProcessingResult or review_notes field
 - [ ] T056a [US3] Add draft fields to ReviewQueue model (draftCustomerCorrection, draftItemCorrections, draftReviewNotes as JSON strings) and lastActivityAt timestamp
 - [ ] T056b [US3] Implement PATCH /v1/reviews/{orderId}/draft endpoint for auto-save functionality (save partial corrections every 30 seconds with status=in_progress, update lastActivityAt)
 - [ ] T056c [US3] Implement concurrent review prevention in GET /v1/reviews/{orderId} (check if status=in_progress by another operator, return 409 Conflict with Japanese message including operator name)
