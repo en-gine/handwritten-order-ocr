@@ -611,3 +611,198 @@ export async function updateContextFromReview(
     'frequent_order'
   );
 }
+
+// ============================================================================
+// Historical Pattern Boosting (T083-T087)
+// ============================================================================
+
+/**
+ * Boost confidence if product appears in customer's recent orders (T083)
+ *
+ * If a product was ordered in the last 10 orders, boost confidence by 20%.
+ *
+ * @param originalConfidence - Original match confidence
+ * @param productId - Product ID
+ * @param customerId - Customer ID
+ * @param db - Prisma client
+ * @returns Boosted confidence
+ */
+export async function boostByHistoricalFrequency(
+  originalConfidence: number,
+  productId: string,
+  customerId: string,
+  db: PrismaClient
+): Promise<number> {
+  // Query last 10 confirmed orders
+  const recentOrders = await db.orderHistory.findMany({
+    where: {
+      customerId,
+    },
+    orderBy: {
+      orderDate: 'desc',
+    },
+    take: 10,
+  });
+
+  // Check if product appears in recent orders
+  for (const order of recentOrders) {
+    const products = JSON.parse(order.products);
+    const hasProduct = products.some((p: any) => p.productId === productId);
+
+    if (hasProduct) {
+      // Product found in last 10 orders - boost by 20%
+      const boosted = Math.min(0.99, originalConfidence + 0.2);
+      console.log(
+        `[Historical Boost] Product in last 10 orders: ${originalConfidence.toFixed(2)} → ${boosted.toFixed(2)} (+20%)`
+      );
+      return boosted;
+    }
+  }
+
+  return originalConfidence;
+}
+
+/**
+ * Infer typical quantity from historical patterns (T084)
+ *
+ * If customer always orders in multiples of a certain number,
+ * suggest that quantity.
+ *
+ * @param productId - Product ID
+ * @param customerId - Customer ID
+ * @param db - Prisma client
+ * @returns Typical quantity or null
+ */
+export async function inferTypicalQuantity(
+  productId: string,
+  customerId: string,
+  db: PrismaClient
+): Promise<number | null> {
+  const recentOrders = await db.orderHistory.findMany({
+    where: {
+      customerId,
+    },
+    orderBy: {
+      orderDate: 'desc',
+    },
+    take: 20,
+  });
+
+  const quantities: number[] = [];
+
+  for (const order of recentOrders) {
+    const products = JSON.parse(order.products);
+    for (const p of products) {
+      if (p.productId === productId) {
+        quantities.push(p.quantity);
+      }
+    }
+  }
+
+  if (quantities.length === 0) {
+    return null;
+  }
+
+  // Find the most common quantity
+  const frequencyMap = new Map<number, number>();
+  for (const qty of quantities) {
+    frequencyMap.set(qty, (frequencyMap.get(qty) || 0) + 1);
+  }
+
+  let maxFreq = 0;
+  let mostCommonQty = null;
+
+  for (const [qty, freq] of frequencyMap.entries()) {
+    if (freq > maxFreq) {
+      maxFreq = freq;
+      mostCommonQty = qty;
+    }
+  }
+
+  return mostCommonQty;
+}
+
+/**
+ * Detect product associations (T085)
+ *
+ * Find products that are frequently ordered together with the given product.
+ *
+ * @param productId - Product ID
+ * @param customerId - Customer ID
+ * @param db - Prisma client
+ * @returns Array of associated product IDs
+ */
+export async function detectProductAssociations(
+  productId: string,
+  customerId: string,
+  db: PrismaClient
+): Promise<Array<{ productId: string; frequency: number }>> {
+  const recentOrders = await db.orderHistory.findMany({
+    where: {
+      customerId,
+    },
+    orderBy: {
+      orderDate: 'desc',
+    },
+    take: 20,
+  });
+
+  // Count co-occurrences
+  const associationMap = new Map<string, number>();
+
+  for (const order of recentOrders) {
+    const products = JSON.parse(order.products);
+    const hasTargetProduct = products.some((p: any) => p.productId === productId);
+
+    if (hasTargetProduct) {
+      // This order contains the target product
+      for (const p of products) {
+        if (p.productId !== productId) {
+          // Count other products in the same order
+          associationMap.set(p.productId, (associationMap.get(p.productId) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  // Convert to array and sort by frequency
+  return Array.from(associationMap.entries())
+    .map(([productId, frequency]) => ({ productId, frequency }))
+    .sort((a, b) => b.frequency - a.frequency)
+    .slice(0, 5); // Top 5 associated products
+}
+
+/**
+ * Comprehensive confidence scoring with historical context (T087)
+ *
+ * Combines multiple signals:
+ * - OCR confidence (text similarity)
+ * - Vector similarity (semantic matching)
+ * - Historical frequency (customer habits)
+ * - Product associations (order patterns)
+ *
+ * @param ocrConfidence - Original OCR/fuzzy match confidence
+ * @param vectorSimilarity - Semantic similarity score (0 if not used)
+ * @param productId - Product ID
+ * @param customerId - Customer ID (optional)
+ * @param db - Prisma client
+ * @returns Combined confidence score
+ */
+export async function calculateCombinedConfidence(
+  ocrConfidence: number,
+  vectorSimilarity: number,
+  productId: string,
+  customerId: string | null,
+  db: PrismaClient
+): Promise<number> {
+  // Start with max of OCR and vector confidence
+  let confidence = Math.max(ocrConfidence, vectorSimilarity);
+
+  // Apply historical boosting if customer known
+  if (customerId && productId) {
+    confidence = await boostByHistoricalFrequency(confidence, productId, customerId, db);
+  }
+
+  // Cap at 99% to avoid false certainty
+  return Math.min(0.99, confidence);
+}

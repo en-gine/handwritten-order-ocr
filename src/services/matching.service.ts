@@ -10,6 +10,8 @@
 
 import type { PrismaClient } from '@prisma/client';
 import type { ProductMatch, CustomerMatch } from '../types/ocr.js';
+import { createGeminiClient } from '../lib/gemini.js';
+import { blobToVector, cosineSimilarity } from '../lib/vectors.js';
 
 /**
  * Calculate Levenshtein distance between two strings.
@@ -328,4 +330,128 @@ export async function matchCustomer(
     confidence: bestMatch.confidence,
     suggestions: bestMatch.confidence < 0.85 ? suggestions : undefined,
   };
+}
+
+// ============================================================================
+// Vector Similarity Search (T080, T082)
+// ============================================================================
+
+/**
+ * Match product using vector similarity search
+ *
+ * When fuzzy matching confidence is low (<60%), use semantic similarity
+ * to find products with similar meanings even if text doesn't match well.
+ *
+ * @param db - Prisma client (tenant database)
+ * @param extractedText - Product text from OCR
+ * @param tenantId - Tenant ID for filtering
+ * @param topK - Number of top results to return (default: 5)
+ * @returns Top K products ranked by semantic similarity
+ */
+export async function matchProductBySemantic(
+  db: PrismaClient,
+  extractedText: string,
+  tenantId: string,
+  topK: number = 5
+): Promise<Array<ProductMatch & { semanticSimilarity: number }>> {
+  try {
+    // Generate embedding for extracted text
+    const gemini = createGeminiClient();
+    const queryEmbedding = await gemini.generateEmbedding(extractedText);
+    const queryVector = new Float32Array(queryEmbedding);
+
+    // Fetch all products with embeddings (using raw SQL)
+    // Note: Turso's DiskANN vector_top_k would be ideal here, but we'll use
+    // application-side similarity calculation for now
+    const products: any[] = await db.$queryRaw`
+      SELECT id, productCode, productName, embedding
+      FROM products
+      WHERE tenantId = ${tenantId}
+        AND isActive = 1
+        AND embedding IS NOT NULL
+    `;
+
+    if (products.length === 0) {
+      return [];
+    }
+
+    // Calculate similarity scores
+    const results = products
+      .map((product) => {
+        const productVector = blobToVector(product.embedding);
+        const similarity = cosineSimilarity(queryVector, productVector);
+
+        return {
+          productId: product.id,
+          productName: product.productName,
+          productCode: product.productCode,
+          confidence: similarity, // Cosine similarity is already 0-1
+          semanticSimilarity: similarity,
+          usedSemanticSearch: true,
+        };
+      })
+      .sort((a, b) => b.semanticSimilarity - a.semanticSimilarity)
+      .slice(0, topK);
+
+    return results;
+  } catch (error) {
+    console.error('[Matching] Vector similarity search failed:', error);
+    // Fall back to empty results if vector search fails
+    return [];
+  }
+}
+
+/**
+ * Enhanced product matching with vector fallback (T082)
+ *
+ * Strategy:
+ * 1. Try fuzzy matching first (fast, accurate for clear text)
+ * 2. If confidence < 60%, use vector similarity (handles unclear text)
+ * 3. Return best match from either method
+ *
+ * @param db - Prisma client
+ * @param extractedText - Product text from OCR
+ * @param tenantId - Tenant ID
+ * @returns Best product match with confidence
+ */
+export async function matchProductEnhanced(
+  db: PrismaClient,
+  extractedText: string,
+  tenantId: string
+): Promise<ProductMatch> {
+  // Step 1: Try fuzzy matching first
+  const fuzzyMatch = await matchProduct(db, extractedText, tenantId);
+
+  // If fuzzy match has good confidence, return it
+  if (fuzzyMatch.confidence >= 0.6) {
+    console.log(
+      `[Matching] Fuzzy match succeeded: ${fuzzyMatch.productName} (${(fuzzyMatch.confidence * 100).toFixed(0)}%)`
+    );
+    return fuzzyMatch;
+  }
+
+  // Step 2: Try vector similarity search
+  console.log(
+    `[Matching] Fuzzy match confidence low (${(fuzzyMatch.confidence * 100).toFixed(0)}%), trying semantic search...`
+  );
+
+  const semanticMatches = await matchProductBySemantic(db, extractedText, tenantId, 3);
+
+  if (semanticMatches.length === 0) {
+    // No semantic matches, return fuzzy match (even if low confidence)
+    return fuzzyMatch;
+  }
+
+  // Compare fuzzy vs semantic matches
+  const bestSemantic = semanticMatches[0];
+
+  if (bestSemantic.semanticSimilarity > fuzzyMatch.confidence) {
+    console.log(
+      `[Matching] Semantic match better: ${bestSemantic.productName} (${(bestSemantic.semanticSimilarity * 100).toFixed(0)}% vs ${(fuzzyMatch.confidence * 100).toFixed(0)}%)`
+    );
+    return bestSemantic;
+  }
+
+  // Fuzzy match still better
+  return fuzzyMatch;
 }

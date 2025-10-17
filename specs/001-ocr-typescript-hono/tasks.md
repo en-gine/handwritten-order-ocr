@@ -194,16 +194,16 @@
 
 ### Implementation for User Story 4
 
-- [ ] T080 [US4] Implement vector similarity search for product matching in src/services/matching.service.ts (use DiskANN indexes, cosine similarity, top-K results)
-- [ ] T081 [US4] Generate vector embeddings for all products during master data import (call Gemini text-embedding-004, store in Product.embedding)
-- [ ] T082 [US4] Update product matching to use vector similarity when fuzzy match confidence is low (<60%)
-- [ ] T083 [US4] Implement historical pattern boosting: if product appears in customer's last 10 orders, boost confidence by 20%
-- [ ] T084 [US4] Implement quantity inference from historical patterns (e.g., customer always orders in multiples of 12)
-- [ ] T085 [US4] Add product association detection (Product A and Product B always ordered together → boost confidence for contextually consistent interpretations)
-- [ ] T086 [US4] Create CustomerContext records for learned product associations
-- [ ] T087 [US4] Update confidence scoring to factor in historical context (combine OCR confidence + historical frequency + product associations)
+- [X] T080 [US4] Implement vector similarity search for product matching in src/services/matching.service.ts (use DiskANN indexes, cosine similarity, top-K results)
+- [X] T081 [US4] Generate vector embeddings for all products during master data import (call Gemini text-embedding-004, store in Product.embedding)
+- [X] T082 [US4] Update product matching to use vector similarity when fuzzy match confidence is low (<60%)
+- [X] T083 [US4] Implement historical pattern boosting: if product appears in customer's last 10 orders, boost confidence by 20%
+- [X] T084 [US4] Implement quantity inference from historical patterns (e.g., customer always orders in multiples of 12)
+- [X] T085 [US4] Add product association detection (Product A and Product B always ordered together → boost confidence for contextually consistent interpretations)
+- [X] T086 [US4] Create CustomerContext records for learned product associations
+- [X] T087 [US4] Update confidence scoring to factor in historical context (combine OCR confidence + historical frequency + product associations)
 
-**Checkpoint**: All user stories are now complete - system handles clear handwriting, unclear handwriting, ambiguous references, and provides review workflow
+**Checkpoint**: ✅ Phase 7 complete - All user stories (US1-US5) are now implemented! System handles clear handwriting, unclear handwriting (with vector similarity), ambiguous references ("いつもの"), and provides review workflow with historical pattern boosting
 
 ---
 

@@ -29,6 +29,8 @@ import {
   type ImportResult,
   type BatchValidationResult,
 } from '../types/master-data.js';
+import { createGeminiClient } from '../lib/gemini.js';
+import { vectorToBlob } from '../lib/vectors.js';
 
 // ============================================================================
 // Import Master Data (Main Entry Point)
@@ -434,4 +436,92 @@ async function replaceAllProducts(
       inserted: products.length,
     };
   });
+}
+
+// ============================================================================
+// Vector Embedding Generation (T081)
+// ============================================================================
+
+/**
+ * Generate vector embeddings for products after import
+ *
+ * This function should be called after product import to generate
+ * semantic embeddings for vector similarity search.
+ *
+ * Note: This is a separate operation due to API rate limits and cost.
+ * Can be run as a background job.
+ *
+ * @param prisma - Prisma client
+ * @param tenantId - Tenant ID
+ * @param productIds - Optional list of product IDs (if empty, process all without embeddings)
+ */
+export async function generateProductEmbeddings(
+  prisma: PrismaClient,
+  tenantId: string,
+  productIds?: string[]
+): Promise<{ processed: number; errors: number }> {
+  try {
+    const gemini = createGeminiClient();
+
+    // Fetch products without embeddings (or specific products)
+    const where: any = {
+      tenantId,
+      isActive: true,
+    };
+
+    if (productIds && productIds.length > 0) {
+      where.id = { in: productIds };
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      select: {
+        id: true,
+        productCode: true,
+        productName: true,
+        nameVariations: true,
+      },
+      take: 100, // Process in batches of 100
+    });
+
+    let processed = 0;
+    let errors = 0;
+
+    for (const product of products) {
+      try {
+        // Generate embedding text (product name + variations)
+        const variations = product.nameVariations
+          ? JSON.parse(product.nameVariations)
+          : [];
+        const embeddingText = [product.productName, ...variations].join(' ');
+
+        // Generate embedding
+        const embedding = await gemini.generateEmbedding(embeddingText);
+        const embeddingBlob = vectorToBlob(new Float32Array(embedding));
+
+        // Store embedding using raw SQL (Prisma doesn't support F32_BLOB directly)
+        await prisma.$executeRaw`
+          UPDATE products
+          SET embedding = ${embeddingBlob}
+          WHERE id = ${product.id}
+        `;
+
+        processed++;
+        console.log(
+          `[Embeddings] Generated embedding for product ${product.productCode}: ${product.productName}`
+        );
+      } catch (error) {
+        errors++;
+        console.error(
+          `[Embeddings] Failed to generate embedding for product ${product.id}:`,
+          error
+        );
+      }
+    }
+
+    return { processed, errors };
+  } catch (error) {
+    console.error('[Embeddings] Failed to generate product embeddings:', error);
+    throw error;
+  }
 }

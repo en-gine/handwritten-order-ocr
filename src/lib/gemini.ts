@@ -235,6 +235,36 @@ export class GeminiClient {
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
+
+  /**
+   * Generate text embedding using Gemini text-embedding-004 model
+   *
+   * Returns a 768-dimensional vector for semantic similarity search.
+   *
+   * @param text - Text to generate embedding for
+   * @returns 768-dimensional embedding vector
+   * @throws Error on API failures
+   */
+  async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      const embeddingModel = this.client.getGenerativeModel({
+        model: 'text-embedding-004',
+      })
+
+      const result = await embeddingModel.embedContent(text)
+
+      if (!result.embedding || !result.embedding.values) {
+        throw new Error('No embedding returned from Gemini API')
+      }
+
+      return result.embedding.values
+    } catch (error) {
+      console.error('[Gemini] Embedding generation error:', error)
+      throw new Error(
+        `Failed to generate embedding: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
+  }
 }
 
 /**
