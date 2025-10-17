@@ -30,20 +30,23 @@ fi
 
 # Test 2: All Required Tables Exist
 echo -n "Test 2: All required tables exist... "
-TABLES=$(turso db shell $DB_NAME "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;" 2>/dev/null)
+TABLES=$(turso db shell $DB_NAME "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;" 2>/dev/null | tr -d ' ' | grep -v '^NAME$' | grep -v '^$')
 EXPECTED_TABLES=("customer_context" "customers" "order_history" "order_items" "orders" "processing_results" "products" "review_queue")
 
 ALL_EXIST=true
+MISSING_TABLES=""
 for table in "${EXPECTED_TABLES[@]}"; do
-  if ! echo "$TABLES" | grep -q "^$table$"; then
-    echo -e "${RED}✗ FAILED${NC} (missing table: $table)"
+  if ! echo "$TABLES" | grep -q "^${table}$"; then
+    MISSING_TABLES="${MISSING_TABLES} ${table}"
     ALL_EXIST=false
-    break
   fi
 done
 
 if [ "$ALL_EXIST" = true ]; then
   echo -e "${GREEN}✓ PASSED${NC}"
+else
+  echo -e "${RED}✗ FAILED${NC} (missing tables:${MISSING_TABLES})"
+  exit 1
 fi
 
 # Test 3: Draft Fields in ReviewQueue
