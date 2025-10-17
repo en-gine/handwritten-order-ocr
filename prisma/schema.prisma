@@ -190,15 +190,20 @@ model CustomerContext {
 
 /// ReviewQueue tracks orders flagged for human review
 model ReviewQueue {
-  id               String    @id @default(uuid())
-  orderId          String    @unique
-  tenantId         String
-  flagReason       String    // 'low_confidence', 'unknown_product', 'unknown_customer'
-  assignedOperator String?   // User ID of operator (if assigned)
-  reviewStatus     String    @default("pending") // pending, in_progress, completed
-  reviewedAt       DateTime?
-  reviewNotes      String?   // Operator notes
-  createdAt        DateTime  @default(now())
+  id                      String    @id @default(uuid())
+  orderId                 String    @unique
+  tenantId                String
+  flagReason              String    // 'low_confidence', 'unknown_product', 'unknown_customer'
+  assignedOperator        String?   // User ID of operator (if assigned)
+  reviewStatus            String    @default("pending") // pending, in_progress, completed
+  reviewedAt              DateTime?
+  reviewNotes             String?   // Operator notes
+  // Draft auto-save fields (T056a)
+  draftCustomerCorrection String?   // JSON: {customerId, customerName}
+  draftItemCorrections    String?   // JSON: [{itemIndex, productId, quantity, unitOfMeasure}]
+  draftReviewNotes        String?   // Draft notes before final submission
+  lastActivityAt          DateTime? // Last auto-save timestamp
+  createdAt               DateTime  @default(now())
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 

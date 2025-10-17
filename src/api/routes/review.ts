@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { jwtAuth } from '../middleware/auth.js'
 import { tenantRouter } from '../middleware/tenant.js'
-import { getReviewQueue, getReviewItem, applyReviewCorrections } from '../../services/review.service.js'
+import { getReviewQueue, getReviewItem, applyReviewCorrections, saveDraftCorrections } from '../../services/review.service.js'
 import type { HonoVariables } from '../../types/hono.js'
 import type { ReviewUpdateRequest } from '../../types/api.js'
 
@@ -189,17 +189,22 @@ review.get('/', async (c) => {
  * GET /v1/reviews/:orderId - Get single order for review
  *
  * Returns order details with presigned URL for original image (1-hour expiry)
+ * Includes concurrent review prevention and draft data loading
  */
 review.get('/:orderId', async (c) => {
   try {
     const prisma = c.get('prisma')
     const tenantId = c.get('tenantId')
     const orderId = c.req.param('orderId')
+    const jwtPayload = c.get('jwtPayload')
 
-    console.log(`[Review Queue] Retrieving order ${orderId} for tenant ${tenantId}`)
+    // Extract operator ID from JWT
+    const operatorId = jwtPayload.sub || jwtPayload.email || 'unknown'
 
-    // Get review item with presigned URL
-    const reviewItem = await getReviewItem(prisma, orderId, tenantId)
+    console.log(`[Review Queue] Retrieving order ${orderId} for tenant ${tenantId} by operator ${operatorId}`)
+
+    // Get review item with presigned URL, draft data, and concurrent review check
+    const reviewItem = await getReviewItem(prisma, orderId, tenantId, operatorId)
 
     return c.json(reviewItem)
   } catch (error) {
@@ -212,8 +217,78 @@ review.get('/:orderId', async (c) => {
       })
     }
 
+    // Handle concurrent review errors (T056c)
+    if (error instanceof Error && error.message.includes('レビュー中です')) {
+      throw new HTTPException(409, {
+        message: error.message,
+      })
+    }
+
     throw new HTTPException(500, {
       message: 'レビュー情報の取得に失敗しました。',
+      cause: error,
+    })
+  }
+})
+
+/**
+ * PATCH /v1/reviews/:orderId/draft - Save draft corrections (T056b)
+ *
+ * Auto-save partial corrections without finalizing the review.
+ * Frontend should call this endpoint every 30 seconds while operator is editing.
+ *
+ * Request body:
+ * - customerCorrection: { customerId, customerName } (optional)
+ * - itemCorrections: Array<{ itemIndex, productId, quantity?, unitOfMeasure? }> (optional)
+ * - reviewNotes: string (optional)
+ *
+ * Response:
+ * - orderId: string
+ * - lastSavedAt: ISO8601 timestamp
+ * - reviewStatus: current status (pending/in_progress/completed)
+ */
+review.patch('/:orderId/draft', async (c) => {
+  try {
+    const prisma = c.get('prisma')
+    const tenantId = c.get('tenantId')
+    const orderId = c.req.param('orderId')
+    const jwtPayload = c.get('jwtPayload')
+
+    // Extract operator ID from JWT
+    const operatorId = jwtPayload.sub || jwtPayload.email || 'unknown'
+
+    console.log(`[Review Draft] Saving draft for order ${orderId} by operator ${operatorId}`)
+
+    // Parse request body
+    const draftData = await c.req.json()
+
+    // Save draft corrections
+    const result = await saveDraftCorrections(
+      prisma,
+      orderId,
+      tenantId,
+      draftData,
+      operatorId
+    )
+
+    return c.json({
+      orderId: result.orderId,
+      lastSavedAt: result.lastSavedAt.toISOString(),
+      reviewStatus: result.reviewStatus,
+      message: '下書きを保存しました。',
+    })
+  } catch (error) {
+    console.error('[Review Draft] Error saving draft:', error)
+
+    // Handle not found errors
+    if (error instanceof Error && error.message.includes('存在しません')) {
+      throw new HTTPException(404, {
+        message: error.message,
+      })
+    }
+
+    throw new HTTPException(500, {
+      message: '下書きの保存に失敗しました。',
       cause: error,
     })
   }

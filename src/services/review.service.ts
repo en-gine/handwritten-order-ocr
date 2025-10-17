@@ -133,19 +133,23 @@ export async function getReviewQueue(
 /**
  * Get single order from review queue with presigned image URL.
  *
+ * Includes concurrent review prevention (T056c) and draft loading (T056e).
+ *
  * @param db - Prisma client (tenant database)
  * @param orderId - Order ID to retrieve
  * @param tenantId - Tenant ID for filtering
+ * @param operatorId - Current operator ID (for concurrent review check)
  * @param expiresIn - Presigned URL expiry in seconds (default 3600 = 1 hour)
- * @returns Review queue item with presigned URL
- * @throws Error if order not found or not in review queue
+ * @returns Review queue item with presigned URL and draft data
+ * @throws Error if order not found, not in review queue, or being reviewed by another operator
  */
 export async function getReviewItem(
   db: PrismaClient,
   orderId: string,
   tenantId: string,
+  operatorId: string,
   expiresIn: number = 3600
-): Promise<ReviewQueueItem & { imageUrl: string }> {
+): Promise<ReviewQueueItem & { imageUrl: string; draft?: any; lastSavedAt?: Date }> {
   // Query review queue for this order
   const review = await db.reviewQueue.findFirst({
     where: {
@@ -170,6 +174,18 @@ export async function getReviewItem(
     throw new Error(`注文 ${orderId} はレビューキューに存在しません。`)
   }
 
+  // T056c: Concurrent review prevention
+  // Check if order is already being reviewed by another operator
+  if (
+    review.reviewStatus === 'in_progress' &&
+    review.assignedOperator &&
+    review.assignedOperator !== operatorId
+  ) {
+    throw new Error(
+      `この注文は現在 ${review.assignedOperator} によってレビュー中です。同時に複数のオペレーターがレビューすることはできません。`
+    )
+  }
+
   // Generate presigned URL for original order image
   const storage = createStorage()
   const imageUrl = await storage.generatePresignedUrl(
@@ -178,7 +194,21 @@ export async function getReviewItem(
     expiresIn
   )
 
-  // Transform to ReviewQueueItem with imageUrl
+  // T056e: Load draft data if available
+  let draft: any = undefined
+  if (review.draftCustomerCorrection || review.draftItemCorrections || review.draftReviewNotes) {
+    draft = {
+      customerCorrection: review.draftCustomerCorrection
+        ? JSON.parse(review.draftCustomerCorrection)
+        : undefined,
+      itemCorrections: review.draftItemCorrections
+        ? JSON.parse(review.draftItemCorrections)
+        : undefined,
+      reviewNotes: review.draftReviewNotes || undefined,
+    }
+  }
+
+  // Transform to ReviewQueueItem with imageUrl and draft
   return {
     orderId: review.orderId,
     customerId: review.order.customerId,
@@ -200,6 +230,9 @@ export async function getReviewItem(
     })),
     createdAt: review.createdAt,
     reviewedAt: review.reviewedAt || undefined,
+    // T056e & T056f: Return draft data and last saved timestamp
+    draft,
+    lastSavedAt: review.lastActivityAt || undefined,
   }
 }
 
@@ -360,3 +393,83 @@ export async function applyReviewCorrections(
     fileKey: result.fileKey,
   }
 }
+
+/**
+ * Save draft corrections for auto-save functionality (T056b).
+ *
+ * Allows operators to save partial corrections every 30 seconds without finalizing the review.
+ * Draft data is stored in JSON format in ReviewQueue fields.
+ *
+ * @param db - Prisma client (tenant database)
+ * @param orderId - Order ID to save draft for
+ * @param tenantId - Tenant ID for filtering
+ * @param draftData - Partial corrections to save
+ * @param operatorId - ID of operator saving draft
+ * @returns Updated review queue item with lastActivityAt timestamp
+ * @throws Error if order not found or not in review queue
+ */
+export async function saveDraftCorrections(
+  db: PrismaClient,
+  orderId: string,
+  tenantId: string,
+  draftData: {
+    customerCorrection?: { customerId: string; customerName?: string }
+    itemCorrections?: Array<{
+      itemIndex: number
+      productId: string
+      quantity?: number
+      unitOfMeasure?: string
+    }>
+    reviewNotes?: string
+  },
+  operatorId: string
+): Promise<{
+  orderId: string
+  lastSavedAt: Date
+  reviewStatus: string
+}> {
+  // Verify order is in review queue
+  const review = await db.reviewQueue.findFirst({
+    where: {
+      orderId,
+      tenantId,
+    },
+  })
+
+  if (!review) {
+    throw new Error(`注文 ${orderId} はレビューキューに存在しません。`)
+  }
+
+  // Update review queue with draft data
+  const now = new Date()
+  const updated = await db.reviewQueue.update({
+    where: { id: review.id },
+    data: {
+      draftCustomerCorrection: draftData.customerCorrection
+        ? JSON.stringify(draftData.customerCorrection)
+        : review.draftCustomerCorrection,
+      draftItemCorrections: draftData.itemCorrections
+        ? JSON.stringify(draftData.itemCorrections)
+        : review.draftItemCorrections,
+      draftReviewNotes: draftData.reviewNotes !== undefined
+        ? draftData.reviewNotes
+        : review.draftReviewNotes,
+      lastActivityAt: now,
+      // Automatically set status to in_progress if currently pending
+      reviewStatus: review.reviewStatus === 'pending' ? 'in_progress' : review.reviewStatus,
+      // Assign operator if not already assigned
+      assignedOperator: review.assignedOperator || operatorId,
+    },
+  })
+
+  console.log(
+    `[Review Draft] Order ${orderId} draft saved by ${operatorId} at ${now.toISOString()}`
+  )
+
+  return {
+    orderId: updated.orderId,
+    lastSavedAt: updated.lastActivityAt!,
+    reviewStatus: updated.reviewStatus,
+  }
+}
+
