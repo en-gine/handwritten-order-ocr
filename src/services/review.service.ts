@@ -16,6 +16,7 @@ import type { PrismaClient } from '@prisma/client'
 import type { ReviewQueueItem, ReviewUpdateRequest } from '../types/api.js'
 import type { OrderResponse } from '../types/ocr.js'
 import { createStorage } from '../lib/storage/factory.js'
+import { recordOrderHistory, updateContextFromReview } from './context.service.js'
 
 /**
  * Get paginated list of orders in review queue.
@@ -360,6 +361,26 @@ export async function applyReviewCorrections(
   console.log(
     `[Review] Order ${orderId} reviewed by ${operatorId}, status: ${finalStatus}`
   )
+
+  // T070: Record order history if confirmed (for context-aware recognition)
+  if (finalStatus === 'CONFIRMED' && result.customerId) {
+    try {
+      await recordOrderHistory(db, orderId, tenantId)
+      console.log(`[Review] Order history recorded for order ${orderId}`)
+    } catch (error) {
+      console.error(`[Review] Failed to record order history for ${orderId}:`, error)
+      // Don't fail the review if history recording fails
+    }
+
+    // T079: Learn customer patterns from corrections
+    try {
+      await updateContextFromReview(db, orderId, tenantId)
+      console.log(`[Review] Customer context updated from review corrections for order ${orderId}`)
+    } catch (error) {
+      console.error(`[Review] Failed to update customer context for ${orderId}:`, error)
+      // Don't fail the review if context learning fails
+    }
+  }
 
   // Build OrderResponse
   return {

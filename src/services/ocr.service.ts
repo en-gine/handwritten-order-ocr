@@ -22,6 +22,11 @@ import {
   meetsThreshold,
   determineFlagReason,
 } from './confidence.service.js';
+import {
+  getCustomerContext,
+  detectUsualOrderPattern,
+  boostConfidenceWithContext,
+} from './context.service.js';
 
 /**
  * Parsed OCR extraction result from Gemini.
@@ -104,11 +109,51 @@ export async function processOrderForm(
         : undefined,
     };
 
-    // Step 4: Match products and build order items
+    // T073: Get customer context if customer identified
+    let customerContext = null;
+    if (customerMatch.customerId) {
+      customerContext = await getCustomerContext(
+        db,
+        customerMatch.customerId,
+        tenantId,
+        30 // Last 30 days
+      );
+      console.log(
+        `[OCR Context] Customer has ${customerContext.totalOrders} orders in last 30 days, ${customerContext.frequentProducts.length} frequent products`
+      );
+    }
+
+    // T074: Detect "いつもの" pattern
+    const isUsualOrder = detectUsualOrderPattern(extractedData.customer);
+    if (isUsualOrder && customerContext) {
+      console.log(`[OCR Context] "いつもの" pattern detected for customer ${customerMatch.customerId}`);
+    }
+
+    // Step 4: Match products and build order items (with context boosting)
     const orderItems: OrderItem[] = [];
     for (const item of extractedData.items) {
       const productMatch = await matchProduct(db, item.product, tenantId);
-      console.log(`[OCR] Product match for "${item.product}":`, productMatch);
+
+      // T077: Boost confidence if product appears in customer history
+      let boostedConfidence = productMatch.confidence;
+      if (customerContext && productMatch.productId) {
+        boostedConfidence = boostConfidenceWithContext(
+          productMatch.confidence,
+          productMatch.productId,
+          customerContext
+        );
+
+        if (boostedConfidence > productMatch.confidence) {
+          console.log(
+            `[OCR Context] Boosted confidence for "${item.product}": ${productMatch.confidence.toFixed(2)} → ${boostedConfidence.toFixed(2)} (in customer history)`
+          );
+        }
+      }
+
+      console.log(`[OCR] Product match for "${item.product}":`, {
+        ...productMatch,
+        boostedConfidence,
+      });
 
       orderItems.push({
         extractedProductText: item.product,
@@ -116,7 +161,7 @@ export async function processOrderForm(
         productName: productMatch.productName || undefined,
         quantity: item.quantity,
         unitOfMeasure: item.unit,
-        confidence: productMatch.confidence,
+        confidence: boostedConfidence, // Use boosted confidence
         verificationStatus: 'unverified',
       });
     }

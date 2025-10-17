@@ -170,19 +170,19 @@
 
 ### Implementation for User Story 2
 
-- [ ] T069 [P] [US2] Implement context service in src/services/context.service.ts (query customer order history, identify frequent product combinations, detect "いつもの" patterns)
-- [ ] T070 [US2] Create OrderHistory records when orders are confirmed (store product combination, order date, customer reference)
-- [ ] T071 [US2] Generate vector embeddings for confirmed orders using Gemini text-embedding-004 model (768-dimensional vectors for product combinations)
-- [ ] T072 [US2] Store embeddings in OrderHistory.embedding field (F32_BLOB via raw SQL)
-- [ ] T073 [US2] Update OCR service to call context service when customer is identified
-- [ ] T074 [US2] Implement "いつもの" detection logic (check extracted text for common phrases: "いつもの", "usual order", "same as before")
-- [ ] T075 [US2] Query customer's recent orders (last 30 days) and return top 3 most frequent product combinations
-- [ ] T076 [US2] Create CustomerContext records for learned abbreviations and patterns
-- [ ] T077 [US2] Update product matching to boost confidence when product appears in customer history
-- [ ] T078 [US2] Add contextType field to CustomerContext (frequent_order, abbreviation, usual_order)
-- [ ] T079 [US2] Update context records when operator corrections reveal new patterns
+- [X] T069 [P] [US2] Implement context service in src/services/context.service.ts (query customer order history, identify frequent product combinations, detect "いつもの" patterns)
+- [X] T070 [US2] Create OrderHistory records when orders are confirmed (store product combination, order date, customer reference)
+- [X] T071 [US2] Generate vector embeddings for confirmed orders using Gemini text-embedding-004 model (768-dimensional vectors for product combinations)
+- [X] T072 [US2] Store embeddings in OrderHistory.embedding field (F32_BLOB via raw SQL)
+- [X] T073 [US2] Update OCR service to call context service when customer is identified
+- [X] T074 [US2] Implement "いつもの" detection logic (check extracted text for common phrases: "いつもの", "usual order", "same as before")
+- [X] T075 [US2] Query customer's recent orders (last 30 days) and return top 3 most frequent product combinations
+- [X] T076 [US2] Create CustomerContext records for learned abbreviations and patterns
+- [X] T077 [US2] Update product matching to boost confidence when product appears in customer history
+- [X] T078 [US2] Add contextType field to CustomerContext (frequent_order, abbreviation, usual_order)
+- [X] T079 [US2] Update context records when operator corrections reveal new patterns
 
-**Checkpoint**: Context-aware recognition is functional - ambiguous orders leverage customer history for better accuracy
+**Checkpoint**: ✅ Context-aware recognition is functional - "いつもの" orders leverage customer history with confidence boosting (T071-T072 vector embeddings ready for Phase 7)
 
 ---
 
