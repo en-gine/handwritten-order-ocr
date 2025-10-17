@@ -89,23 +89,23 @@
 
 ### Implementation for User Story 1
 
-- [ ] T036 [P] [US1] Define OCR entity types in src/types/ocr.ts (OrderResponse, ExtractedCustomer, OrderItem, ProcessingResult)
-- [ ] T037 [P] [US1] Define API request/response types in src/types/api.ts (OCRUploadRequest, OCRUploadResponse)
-- [ ] T038 [US1] Implement file upload validation middleware in src/api/middleware/upload.ts (10MB limit, PDF/JPG/PNG only)
-- [ ] T039 [US1] Implement POST /v1/ocr endpoint in src/api/routes/ocr.ts (multipart/form-data parsing, file validation, async processing)
-- [ ] T040 [US1] Implement OCR service orchestration in src/services/ocr.service.ts (Mastra workflow: file upload → Gemini OCR → extraction → confidence scoring)
-- [ ] T041 [US1] Create Gemini prompt templates for Japanese handwriting OCR in src/lib/gemini.ts (extract customer info, product list, quantities)
-- [ ] T042 [US1] Implement product matching service in src/services/matching.service.ts (fuzzy match extracted product text against tenant's product master, return confidence scores)
-- [ ] T043 [US1] Implement confidence scoring logic in src/services/confidence.service.ts (per-field and overall confidence calculation, threshold comparison)
-- [ ] T044 [US1] Create Order record in database with status PROCESSING → CONFIRMED/REVIEWING based on confidence threshold
-- [ ] T045 [US1] Store uploaded file via storage factory (local or R2 based on environment)
-- [ ] T046 [US1] Save ProcessingResult record with raw Gemini response, extracted fields, confidence scores
-- [ ] T047 [US1] Return structured JSON response (orderId, status, overallConfidence, customer, items, submissionTime, processingTime)
-- [ ] T047a [US1] Implement batch upload endpoint POST /v1/ocr/batch (accept array of files in multipart/form-data, return array of OrderResponse with individual processing results)
-- [ ] T047b [US1] Add parallel processing with concurrency control for batch uploads (process up to 5 orders concurrently per tenant to prevent resource exhaustion, queue remaining orders)
-- [ ] T047c [US1] Implement batch result aggregation (return combined statistics: total processed, successful, failed, average confidence, total processing time)
+- [X] T036 [P] [US1] Define OCR entity types in src/types/ocr.ts (OrderResponse, ExtractedCustomer, OrderItem, ProcessingResult)
+- [X] T037 [P] [US1] Define API request/response types in src/types/api.ts (OCRUploadRequest, OCRUploadResponse)
+- [X] T038 [US1] Implement file upload validation middleware in src/api/middleware/upload.ts (10MB limit, PDF/JPG/PNG only)
+- [X] T039 [US1] Implement POST /v1/ocr endpoint in src/api/routes/ocr.ts (multipart/form-data parsing, file validation, async processing)
+- [X] T040 [US1] Implement OCR service orchestration in src/services/ocr.service.ts (Mastra workflow: file upload → Gemini OCR → extraction → confidence scoring)
+- [X] T041 [US1] Create Gemini prompt templates for Japanese handwriting OCR in src/lib/gemini.ts (extract customer info, product list, quantities)
+- [X] T042 [US1] Implement product matching service in src/services/matching.service.ts (fuzzy match extracted product text against tenant's product master, return confidence scores)
+- [X] T043 [US1] Implement confidence scoring logic in src/services/confidence.service.ts (per-field and overall confidence calculation, threshold comparison)
+- [X] T044 [US1] Create Order record in database with status PROCESSING → CONFIRMED/REVIEWING based on confidence threshold
+- [X] T045 [US1] Store uploaded file via storage factory (local or R2 based on environment)
+- [X] T046 [US1] Save ProcessingResult record with raw Gemini response, extracted fields, confidence scores
+- [X] T047 [US1] Return structured JSON response (orderId, status, overallConfidence, customer, items, submissionTime, processingTime)
+- [X] T047a [US1] Implement batch upload endpoint POST /v1/ocr/batch (accept array of files in multipart/form-data, return array of OrderResponse with individual processing results)
+- [X] T047b [US1] Add parallel processing with concurrency control for batch uploads (process up to 5 orders concurrently per tenant to prevent resource exhaustion, queue remaining orders)
+- [X] T047c [US1] Implement batch result aggregation (return combined statistics: total processed, successful, failed, average confidence, total processing time)
 
-**Checkpoint**: At this point, User Story 1 should be fully functional - operators can upload clear order forms (single or batch) and receive accurate JSON output
+**Checkpoint**: ✅ User Story 1 is fully functional - operators can upload clear order forms (single or batch) and receive accurate JSON output
 
 ---
 

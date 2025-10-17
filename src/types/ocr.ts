@@ -13,7 +13,7 @@ export interface ExtractedCustomer {
   /** Customer identifier (code or name) as recognized from form */
   customerIdentifier: string;
   /** Confidence score for customer identification (0.0-1.0) */
-  confidence: float;
+  confidence: number;
   /** Additional customer details extracted (address, phone, etc.) */
   additionalInfo?: Record<string, string>;
 }
