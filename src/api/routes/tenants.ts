@@ -1,5 +1,14 @@
 // src/api/routes/tenants.ts
 import { Hono } from 'hono'
+import { adminAuth } from '../middleware/auth.js'
+import { getServicePrismaClient } from '../../lib/turso.js'
+import {
+  createTenant,
+  getTenant,
+  updateTenant,
+  deactivateTenant,
+  type CreateTenantRequest,
+} from '../../services/tenant.service.js'
 
 /**
  * Tenant provisioning routes for multi-tenant management.
@@ -131,85 +140,160 @@ const tenants = new Hono()
 /**
  * POST /v1/tenants - Create new tenant
  *
- * NOTE: This is a placeholder implementation.
- * Full implementation will be added in Phase 2 (Task T036 - Tenant Provisioning Service).
+ * Provisions a new tenant with:
+ * - Unique tenant ID
+ * - Turso database (seeded from ocr-seed-db)
+ * - Database authentication token
+ * - JWT API key for tenant access
+ * - Service database registration
  *
- * Required middleware (to be added):
- * - adminAuth: Verify admin JWT token
- * - permissionCheck('tenant:manage'): Verify admin permission
- * - requestValidator: Validate tenant creation request
+ * Requires: Admin JWT token with 'admin' permission
  */
-tenants.post('/', (c) => {
-  return c.json(
-    {
-      error: {
-        message: 'Tenant provisioning not yet implemented',
-        status: 501,
-        hint: 'This endpoint will be implemented in Phase 2 (Task T036 - Tenant Provisioning Service)',
+tenants.post('/', adminAuth, async (c) => {
+  try {
+    // Parse request body
+    const body = await c.req.json<CreateTenantRequest>();
+
+    // Validate required fields
+    if (!body.name || !body.email) {
+      return c.json(
+        {
+          error: {
+            message: 'Missing required fields: name, email',
+            status: 400,
+          },
+        },
+        400
+      );
+    }
+
+    // Get service database client
+    const serviceDb = getServicePrismaClient();
+
+    // Create tenant (T089-T093)
+    const tenant = await createTenant(serviceDb, body);
+
+    // Return tenant credentials
+    return c.json(
+      {
+        tenantId: tenant.tenantId,
+        name: tenant.name,
+        apiKey: tenant.apiKey,
+        databaseName: tenant.databaseName,
+        databaseUrl: tenant.databaseUrl,
+        databaseToken: tenant.databaseToken,
+        tier: tenant.tier,
+        createdAt: tenant.createdAt,
+        isActive: tenant.isActive,
       },
-    },
-    501
-  )
+      201
+    );
+  } catch (error) {
+    console.error('[Tenants] Create failed:', error);
+    return c.json(
+      {
+        error: {
+          message: 'Tenant creation failed',
+          details: error instanceof Error ? error.message : 'Unknown error',
+          status: 500,
+        },
+      },
+      500
+    );
+  }
 })
 
 /**
  * GET /v1/tenants/:tenantId - Get tenant details
  *
- * NOTE: This is a placeholder implementation.
- * Full implementation will be added in Phase 2 (Task T036 - Tenant Provisioning Service).
+ * Requires: Admin JWT token with 'admin' permission
  */
-tenants.get('/:tenantId', (c) => {
-  const tenantId = c.req.param('tenantId')
-  return c.json(
-    {
-      error: {
-        message: `Tenant retrieval not yet implemented (tenantId: ${tenantId})`,
-        status: 501,
-        hint: 'This endpoint will be implemented in Phase 2 (Task T036 - Tenant Provisioning Service)',
+tenants.get('/:tenantId', adminAuth, async (c) => {
+  try {
+    const tenantId = c.req.param('tenantId');
+    const serviceDb = getServicePrismaClient();
+
+    const tenant = await getTenant(serviceDb, tenantId);
+
+    return c.json(tenant, 200);
+  } catch (error) {
+    console.error('[Tenants] Get failed:', error);
+    return c.json(
+      {
+        error: {
+          message: 'Tenant not found',
+          details: error instanceof Error ? error.message : 'Unknown error',
+          status: 404,
+        },
       },
-    },
-    501
-  )
+      404
+    );
+  }
 })
 
 /**
  * PATCH /v1/tenants/:tenantId - Update tenant settings
  *
- * NOTE: This is a placeholder implementation.
- * Full implementation will be added in Phase 2 (Task T036 - Tenant Provisioning Service).
+ * Requires: Admin JWT token with 'admin' permission
  */
-tenants.patch('/:tenantId', (c) => {
-  const tenantId = c.req.param('tenantId')
-  return c.json(
-    {
-      error: {
-        message: `Tenant update not yet implemented (tenantId: ${tenantId})`,
-        status: 501,
-        hint: 'This endpoint will be implemented in Phase 2 (Task T036 - Tenant Provisioning Service)',
+tenants.patch('/:tenantId', adminAuth, async (c) => {
+  try {
+    const tenantId = c.req.param('tenantId');
+    const body = await c.req.json();
+    const serviceDb = getServicePrismaClient();
+
+    const tenant = await updateTenant(serviceDb, tenantId, body);
+
+    return c.json(tenant, 200);
+  } catch (error) {
+    console.error('[Tenants] Update failed:', error);
+    return c.json(
+      {
+        error: {
+          message: 'Tenant update failed',
+          details: error instanceof Error ? error.message : 'Unknown error',
+          status: 500,
+        },
       },
-    },
-    501
-  )
+      500
+    );
+  }
 })
 
 /**
  * DELETE /v1/tenants/:tenantId - Deactivate tenant
  *
- * NOTE: This is a placeholder implementation.
- * Full implementation will be added in Phase 2 (Task T036 - Tenant Provisioning Service).
+ * Soft delete - sets isActive to false, preserves data.
+ * Requires: Admin JWT token with 'admin' permission
  */
-tenants.delete('/:tenantId', (c) => {
-  const tenantId = c.req.param('tenantId')
-  return c.json(
-    {
-      error: {
-        message: `Tenant deactivation not yet implemented (tenantId: ${tenantId})`,
-        status: 501,
-        hint: 'This endpoint will be implemented in Phase 2 (Task T036 - Tenant Provisioning Service)',
+tenants.delete('/:tenantId', adminAuth, async (c) => {
+  try {
+    const tenantId = c.req.param('tenantId');
+    const serviceDb = getServicePrismaClient();
+
+    const tenant = await deactivateTenant(serviceDb, tenantId);
+
+    return c.json(
+      {
+        tenantId: tenant.id,
+        isActive: tenant.isActive,
+        deactivatedAt: tenant.updatedAt,
       },
-    },
-    501
-  )
+      200
+    );
+  } catch (error) {
+    console.error('[Tenants] Deactivate failed:', error);
+    return c.json(
+      {
+        error: {
+          message: 'Tenant deactivation failed',
+          details: error instanceof Error ? error.message : 'Unknown error',
+          status: 500,
+        },
+      },
+      500
+    );
+  }
 })
 
 export default tenants

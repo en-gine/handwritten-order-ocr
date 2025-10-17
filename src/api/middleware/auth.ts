@@ -98,3 +98,51 @@ export const jwtAuth = createMiddleware(async (c, next) => {
     })
   }
 })
+
+/**
+ * Admin authentication middleware for tenant management endpoints.
+ *
+ * Verifies JWT token contains 'admin' role in permissions claim.
+ * Used for tenant provisioning and administrative operations.
+ *
+ * **How it works**:
+ * 1. Runs jwtAuth middleware to verify token
+ * 2. Checks for 'admin' role in permissions array
+ * 3. Allows request to proceed if admin role present
+ *
+ * **Usage**:
+ * ```typescript
+ * import { adminAuth } from './middleware/auth'
+ *
+ * app.post('/v1/tenants', adminAuth, async (c) => {
+ *   // Only accessible with admin JWT token
+ * })
+ * ```
+ *
+ * **Thrown Errors**:
+ * - 403: Missing admin role in JWT permissions
+ *
+ * @example
+ * // Valid admin JWT payload
+ * {
+ *   "tenant_id": "admin",
+ *   "permissions": ["admin", "tenant:manage"],
+ *   "rate_limit_tier": "premium"
+ * }
+ */
+export const adminAuth = createMiddleware(async (c, next) => {
+  // First, verify JWT token
+  await jwtAuth(c, async () => {});
+
+  // Check for admin role in permissions
+  const payload = c.get('jwtPayload') as any;
+  const permissions = payload.permissions || [];
+
+  if (!permissions.includes('admin')) {
+    throw new HTTPException(403, {
+      message: 'Admin access required for this operation',
+    });
+  }
+
+  await next();
+})

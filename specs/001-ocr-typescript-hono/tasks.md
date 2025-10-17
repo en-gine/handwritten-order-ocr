@@ -211,14 +211,14 @@
 
 **Purpose**: Allow administrators to provision new tenants and manage tenant settings
 
-- [ ] T088 [P] Implement POST /v1/tenants endpoint in src/api/routes/tenants.ts (admin-only, requires special admin JWT claim)
-- [ ] T089 Implement tenant provisioning service in src/services/tenant.service.ts (create Turso tenant database via --from-db, generate API credentials, register in service DB)
-- [ ] T090 [P] Add tenant creation logic: call Turso Platform API to create database from seed template (--from-db ocr-seed-db)
-- [ ] T091 [P] Generate JWT token for new tenant with tenant_id, permissions, rate_limit_tier claims
-- [ ] T092 Update service database with tenant metadata (databaseUrl, confidenceThreshold, aiModel, rateLimitTier)
-- [ ] T093 Return tenant credentials in API response (tenantId, databaseUrl, apiKey/JWT)
+- [X] T088 [P] Implement POST /v1/tenants endpoint in src/api/routes/tenants.ts (admin-only, requires special admin JWT claim)
+- [X] T089 Implement tenant provisioning service in src/services/tenant.service.ts (create Turso tenant database via --from-db, generate API credentials, register in service DB)
+- [X] T090 [P] Add tenant creation logic: call Turso Platform API to create database from seed template (--from-db ocr-seed-db)
+- [X] T091 [P] Generate JWT token for new tenant with tenant_id, permissions, rate_limit_tier claims
+- [X] T092 Update service database with tenant metadata (databaseUrl, confidenceThreshold, aiModel, rateLimitTier)
+- [X] T093 Return tenant credentials in API response (tenantId, databaseUrl, apiKey/JWT)
 
-**Checkpoint**: Tenant management is functional - new customers can be onboarded programmatically
+**Checkpoint**: ✅ Tenant management is functional - new customers can be onboarded programmatically via admin API with Turso Platform integration
 
 ---
 
