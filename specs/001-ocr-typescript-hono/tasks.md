@@ -145,20 +145,20 @@
 
 ### Implementation for User Story 5
 
-- [ ] T057 [P] [US5] Define master data import schemas in src/types/master-data.ts (ProductImportSchema, CustomerImportSchema with Zod validation)
-- [ ] T058 [US5] Implement POST /v1/master/import endpoint in src/api/routes/master.ts (multipart/form-data for CSV/JSON, type parameter for customer/product, mode parameter for incremental/full)
-- [ ] T059 [US5] Implement master data import service in src/services/import.service.ts (PapaParse CSV parsing, JSON parsing, batch validation with Zod)
-- [ ] T060 [US5] Implement batch upsert logic for customer data (1000-row batches, incremental mode: check existing → split into inserts/updates → bulk operations)
-- [ ] T061 [US5] Implement batch upsert logic for product data (same pattern as customer import)
-- [ ] T062 [US5] Add full replacement mode (delete all existing records → bulk insert new records within transaction)
-- [ ] T063 [US5] Implement customer matching service in src/services/matching.service.ts (fuzzy match on customer name, exact match on customer code, return top 3 suggestions with confidence scores)
-- [ ] T064 [US5] Update OCR service to call customer matching before product matching
-- [ ] T065 [US5] Store matched customer ID in Order.customerId field
-- [ ] T066 [US5] Add customer name variations support (JSON array in Customer.nameVariations field, check all variations during matching)
-- [ ] T067 [US5] Return customer suggestions array in OrderResponse when confidence is low (60-70% range)
-- [ ] T068 [US5] Flag orders as "unknown_customer" when no match above 60% confidence
+- [X] T057 [P] [US5] Define master data import schemas in src/types/master-data.ts (ProductImportSchema, CustomerImportSchema with Zod validation)
+- [X] T058 [US5] Implement POST /v1/master/import endpoint in src/api/routes/master.ts (multipart/form-data for CSV/JSON, type parameter for customer/product, mode parameter for incremental/full)
+- [X] T059 [US5] Implement master data import service in src/services/import.service.ts (PapaParse CSV parsing, JSON parsing, batch validation with Zod)
+- [X] T060 [US5] Implement batch upsert logic for customer data (1000-row batches, incremental mode: check existing → split into inserts/updates → bulk operations)
+- [X] T061 [US5] Implement batch upsert logic for product data (same pattern as customer import)
+- [X] T062 [US5] Add full replacement mode (delete all existing records → bulk insert new records within transaction)
+- [X] T063 [US5] Implement customer matching service in src/services/matching.service.ts (fuzzy match on customer name, exact match on customer code, return top 3 suggestions with confidence scores)
+- [X] T064 [US5] Update OCR service to call customer matching before product matching
+- [X] T065 [US5] Store matched customer ID in Order.customerId field
+- [X] T066 [US5] Add customer name variations support (JSON array in Customer.nameVariations field, check all variations during matching)
+- [X] T067 [US5] Return customer suggestions array in OrderResponse when confidence is low (60-70% range)
+- [X] T068 [US5] Flag orders as "unknown_customer" when no match above 60% confidence
 
-**Checkpoint**: Customer matching is now functional - system can identify repeat customers from handwriting
+**Checkpoint**: ✅ Customer matching is now functional - system can identify repeat customers from handwriting and import master data via CSV/JSON
 
 ---
 

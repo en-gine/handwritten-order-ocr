@@ -1,5 +1,8 @@
 // src/api/routes/master.ts
-import { Hono } from 'hono'
+import { Hono } from 'hono';
+import type { PrismaClient } from '@prisma/client';
+import { importMasterData } from '../../services/import.service.js';
+import type { MasterDataType, ImportMode } from '../../types/master-data.js';
 
 /**
  * Master data import routes for customer and product data.
@@ -101,31 +104,174 @@ import { Hono } from 'hono'
  * @module routes/master
  */
 
-const master = new Hono()
+// Type for Hono context with tenant-injected Prisma client
+type Env = {
+  Variables: {
+    prisma: PrismaClient;
+    tenantId: string;
+    jwtPayload: {
+      sub?: string;
+      email?: string;
+      permissions?: string[];
+    };
+  };
+};
+
+const master = new Hono<Env>();
 
 /**
  * POST /v1/master/import - Import customer or product data
  *
- * NOTE: This is a placeholder implementation.
- * Full implementation will be added in Phase 5 (User Story 5).
- *
- * Required middleware (to be added):
+ * Required middleware:
  * - jwtAuth: Verify JWT token
  * - tenantRouter: Load tenant database client
- * - permissionCheck('master:import'): Verify permission
- * - uploadValidator: Validate file size and format
+ *
+ * Accepts multipart/form-data with:
+ * - file: CSV or JSON file
+ * - type: "customer" | "product"
+ * - mode: "incremental" | "full"
  */
-master.post('/import', (c) => {
-  return c.json(
-    {
-      error: {
-        message: 'Master data import not yet implemented',
-        status: 501,
-        hint: 'This endpoint will be implemented in Phase 5 (User Story 5 - Customer Master Data Matching)',
+master.post('/import', async (c) => {
+  try {
+    const prisma = c.get('prisma');
+    const tenantId = c.get('tenantId');
+
+    // Parse multipart/form-data
+    const body = await c.req.parseBody();
+
+    // Validate required fields
+    if (!body.file || !body.type || !body.mode) {
+      return c.json(
+        {
+          error: 'Missing required fields',
+          required: ['file', 'type', 'mode'],
+        },
+        400
+      );
+    }
+
+    // Validate file is actually a File object
+    if (!(body.file instanceof File)) {
+      return c.json(
+        {
+          error: 'Invalid file upload',
+          message: 'File must be uploaded as multipart/form-data',
+        },
+        400
+      );
+    }
+
+    // Validate type parameter
+    const type = body.type as string;
+    if (type !== 'customer' && type !== 'product') {
+      return c.json(
+        {
+          error: 'Invalid type parameter',
+          message: 'Type must be either "customer" or "product"',
+          received: type,
+        },
+        400
+      );
+    }
+
+    // Validate mode parameter
+    const mode = body.mode as string;
+    if (mode !== 'incremental' && mode !== 'full') {
+      return c.json(
+        {
+          error: 'Invalid mode parameter',
+          message: 'Mode must be either "incremental" or "full"',
+          received: mode,
+        },
+        400
+      );
+    }
+
+    // Validate file size (50MB limit)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    if (body.file.size > MAX_FILE_SIZE) {
+      return c.json(
+        {
+          error: 'File too large',
+          message: `File size must be less than 50MB`,
+          size: body.file.size,
+          maxSize: MAX_FILE_SIZE,
+        },
+        413
+      );
+    }
+
+    // Validate file type (CSV or JSON)
+    const fileExtension = body.file.name.split('.').pop()?.toLowerCase();
+    if (fileExtension !== 'csv' && fileExtension !== 'json') {
+      return c.json(
+        {
+          error: 'Invalid file type',
+          message: 'File must be CSV (.csv) or JSON (.json)',
+          received: fileExtension,
+        },
+        400
+      );
+    }
+
+    // Full replacement mode requires confirmation flag for safety
+    if (mode === 'full' && body.confirm !== 'true') {
+      return c.json(
+        {
+          error: 'Full replacement mode requires confirmation',
+          message:
+            'Full replacement will delete all existing data. Add confirm=true to proceed.',
+          hint: 'This is a safety check to prevent accidental data loss',
+        },
+        400
+      );
+    }
+
+    // Read file content
+    const fileContent = await body.file.text();
+
+    // Call import service
+    const result = await importMasterData({
+      prisma,
+      tenantId,
+      type: type as MasterDataType,
+      mode: mode as ImportMode,
+      fileContent,
+      fileName: body.file.name,
+    });
+
+    // Return success response
+    return c.json(
+      {
+        success: true,
+        type: result.type,
+        mode: result.mode,
+        totalRows: result.totalRows,
+        inserted: result.inserted,
+        updated: result.updated,
+        deleted: result.deleted,
+        errorCount: result.errors.length,
+        errors: result.errors.slice(0, 10), // Return first 10 errors
+        durationMs: result.durationMs,
+        message:
+          result.errors.length === 0
+            ? `Successfully imported ${result.totalRows} ${result.type} records`
+            : `Imported with ${result.errors.length} errors (showing first 10)`,
       },
-    },
-    501
-  )
+      result.errors.length === 0 ? 200 : 207 // 207 Multi-Status for partial success
+    );
+  } catch (error) {
+    console.error('Master data import error:', error);
+
+    return c.json(
+      {
+        error: 'Import failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        timestamp: new Date().toISOString(),
+      },
+      500
+    );
+  }
 })
 
 export default master
