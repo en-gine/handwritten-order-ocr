@@ -4,19 +4,31 @@ This directory contains test fixtures and validation scripts for the OCR MVP.
 
 ## Quick Start
 
-### Recommended: Automated Validation Script ✅
+### Recommended: Unified Test Commands ✅
 
-The fastest and most reliable way to validate the MVP:
+The easiest way to run tests:
 
 ```bash
-./tests/validate-mvp.sh
+# Using npm (recommended)
+npm test
+
+# Or using make
+make test
 ```
 
-**This script**:
+Both commands run the MVP validation script which:
 - Tests against your live Turso database (`ocr-tenant-test`)
 - Runs 11 comprehensive validation tests
 - Automatically cleans up test data
 - **Currently: 11/11 tests passing**
+
+### Direct Script Execution
+
+You can also run the validation script directly:
+
+```bash
+./tests/validate-mvp.sh
+```
 
 ---
 
@@ -27,7 +39,14 @@ The fastest and most reliable way to validate the MVP:
 Integration tests using local SQLite database:
 
 ```bash
-npm test tests/integration/mvp-validation.test.ts
+# Run integration tests
+npm run test:integration
+
+# Run with watch mode
+npm run test:watch
+
+# Run with UI
+npm run test:ui
 ```
 
 **Status**: 12/17 tests passing (70%)
@@ -139,6 +158,71 @@ npm test tests/integration/mvp-validation.test.ts
 **Many tests failing**:
 - This is expected - some tests need SQLite-specific adjustments
 - Shell script is the recommended validation method
+
+---
+
+## Available Test Commands
+
+### NPM Scripts
+
+```bash
+# Primary test commands
+npm test                    # Run MVP validation (recommended)
+npm run test:mvp            # Same as npm test
+npm run test:all            # Run MVP + integration tests
+
+# Integration tests
+npm run test:integration    # Run Vitest integration tests
+npm run test:unit           # Run unit tests (future)
+npm run test:watch          # Run tests in watch mode
+npm run test:ui             # Run tests with Vitest UI
+npm run test:coverage       # Run tests with coverage report
+
+# Database validation
+npm run db:validate         # Show all database tables
+npm run db:generate         # Generate Prisma client
+npm run db:migrate          # Run migrations (dev)
+npm run db:deploy           # Deploy migrations (production)
+npm run db:seed             # Seed database with test data
+
+# Code quality
+npm run lint                # Run ESLint
+npm run format              # Format code with Prettier
+npm run format:check        # Check formatting
+
+# Development
+npm run dev                 # Start development server
+npm run build               # Build for production
+npm start                   # Start production server
+```
+
+### Make Commands
+
+```bash
+# View all available commands
+make help
+
+# Testing
+make test                   # Run MVP validation (same as npm test)
+make test-mvp               # Run MVP validation
+make test-integration       # Run Vitest integration tests
+make test-all               # Run all tests
+
+# Development
+make dev                    # Start development server
+make build                  # Build production bundle
+make lint                   # Run ESLint
+make format                 # Format code with Prettier
+
+# Database
+make db-validate            # Validate database schema
+make db-migrate             # Run Prisma migrations
+make db-seed                # Seed database
+
+# Utilities
+make setup                  # Initial project setup
+make clean                  # Clean build artifacts
+```
 
 ---
 
