@@ -1,0 +1,11 @@
+productCode,productName,nameVariations,unitOfMeasure,category,isActive
+PROD001,ビール大瓶,"[""ビール大瓶"", ""ビール大"", ""Beer Large""]",case,beverage,true
+PROD002,ビール小瓶,"[""ビール小瓶"", ""ビール小"", ""Beer Small""]",case,beverage,true
+PROD003,日本酒一升瓶,"[""日本酒一升瓶"", ""日本酒"", ""Sake 1.8L""]",bottle,beverage,true
+PROD004,焼酎900ml,"[""焼酎900ml"", ""焼酎"", ""Shochu 900ml""]",bottle,beverage,true
+PROD005,ウイスキー角瓶,"[""ウイスキー角瓶"", ""角瓶"", ""Whisky Kakubin""]",bottle,beverage,true
+PROD006,コーラ1.5L,"[""コーラ1.5L"", ""コーラ"", ""Cola 1.5L""]",bottle,beverage,true
+PROD007,烏龍茶2L,"[""烏龍茶2L"", ""烏龍茶"", ""Oolong Tea 2L""]",bottle,beverage,true
+PROD008,ミネラルウォーター,"[""ミネラルウォーター"", ""水"", ""Mineral Water""]",case,beverage,true
+PROD009,ポテトチップス,"[""ポテトチップス"", ""ポテチ"", ""Potato Chips""]",bag,snack,true
+PROD010,柿の種,"[""柿の種"", ""柿ピー"", ""Kaki no Tane""]",bag,snack,true

@@ -1,0 +1,6 @@
+customerCode,name,nameVariations,contactInfo,isActive
+CUST001,田中商店,"[""田中商店"", ""田中"", ""Tanaka Shoten""]","{""phone"": ""03-1234-5678"", ""email"": ""tanaka@example.com""}",true
+CUST002,鈴木食品,"[""鈴木食品"", ""鈴木"", ""Suzuki Foods""]","{""phone"": ""03-2345-6789"", ""email"": ""suzuki@example.com""}",true
+CUST003,山田水産,"[""山田水産"", ""山田"", ""Yamada Seafood""]","{""phone"": ""03-3456-7890"", ""email"": ""yamada@example.com""}",true
+CUST004,佐藤酒店,"[""佐藤酒店"", ""佐藤"", ""Sato Liquor""]","{""phone"": ""03-4567-8901"", ""email"": ""sato@example.com""}",true
+CUST005,高橋青果,"[""高橋青果"", ""高橋"", ""Takahashi Produce""]","{""phone"": ""03-5678-9012"", ""email"": ""takahashi@example.com""}",true
